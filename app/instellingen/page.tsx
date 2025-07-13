@@ -10,53 +10,39 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Building, Clock, Bell, Database, Save, Download, Upload } from "lucide-react"
+import { rijschoolSettings } from "@/lib/data"
+import { toast } from "@/hooks/use-toast"
 
 export default function Instellingen() {
-  const [settings, setSettings] = useState({
-    // Rijschool Informatie
-    rijschoolNaam: "Rijschool De Veilige Weg",
-    adres: "Hoofdstraat 123",
-    postcode: "1234 AB",
-    plaats: "Amsterdam",
-    telefoon: "020-1234567",
-    email: "info@rijschooldeveligeweg.nl",
-    website: "www.rijschooldeveligeweg.nl",
-    kvkNummer: "12345678",
-
-    // Planning Instellingen
-    openingstijden: {
-      maandag: { open: "08:00", dicht: "18:00", gesloten: false },
-      dinsdag: { open: "08:00", dicht: "18:00", gesloten: false },
-      woensdag: { open: "08:00", dicht: "18:00", gesloten: false },
-      donderdag: { open: "08:00", dicht: "18:00", gesloten: false },
-      vrijdag: { open: "08:00", dicht: "18:00", gesloten: false },
-      zaterdag: { open: "09:00", dicht: "17:00", gesloten: false },
-      zondag: { open: "10:00", dicht: "16:00", gesloten: true },
-    },
-    lesDuur: 60,
-    examenDuur: 90,
-    pauzeMinuten: 15,
-
-    // Notificatie Instellingen
-    emailNotificaties: true,
-    smsNotificaties: false,
-    herinneringVoorExamen: 24, // uren
-    herinneringVoorLes: 2, // uren
-
-    // Systeem Instellingen
-    automatischeBackup: true,
-    backupTijd: "02:00",
-    dataRetentie: 365, // dagen
-
-    // Prijzen
-    prijsAutomaat: 45,
-    prijsSchakel: 50,
-    prijsExamen: 200,
-  })
+  const [settings, setSettings] = useState(rijschoolSettings)
 
   const handleSave = () => {
-    // Hier zou je de instellingen opslaan
+    toast({
+      title: "Instellingen opgeslagen",
+      description: "Alle instellingen zijn succesvol opgeslagen.",
+    })
     console.log("Instellingen opgeslagen:", settings)
+  }
+
+  const handleExport = () => {
+    toast({
+      title: "Export gestart",
+      description: "Instellingen worden geëxporteerd...",
+    })
+  }
+
+  const handleImportBackup = () => {
+    toast({
+      title: "Import functie",
+      description: "Backup import functionaliteit wordt binnenkort toegevoegd.",
+    })
+  }
+
+  const handleDownloadBackup = () => {
+    toast({
+      title: "Download gestart",
+      description: "Backup wordt gedownload...",
+    })
   }
 
   const dagen = [
@@ -74,7 +60,7 @@ export default function Instellingen() {
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Instellingen</h2>
         <div className="flex items-center space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Exporteren
           </Button>
@@ -93,7 +79,7 @@ export default function Instellingen() {
               <Building className="h-5 w-5" />
               <CardTitle>Rijschool Informatie</CardTitle>
             </div>
-            <CardDescription>Algemene informatie over je rijschool</CardDescription>
+            <CardDescription>Algemene informatie over {settings.rijschoolNaam}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -451,11 +437,11 @@ export default function Instellingen() {
             <Separator />
 
             <div className="flex items-center space-x-2">
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleImportBackup}>
                 <Upload className="mr-2 h-4 w-4" />
                 Backup Importeren
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleDownloadBackup}>
                 <Download className="mr-2 h-4 w-4" />
                 Backup Downloaden
               </Button>

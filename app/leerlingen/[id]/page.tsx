@@ -1,79 +1,74 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Phone, Mail, MapPin, Car, Euro, FileText, Edit, MessageSquare, Clock, Award, User, Plus } from "lucide-react"
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Car,
+  Euro,
+  FileText,
+  Edit,
+  MessageSquare,
+  Clock,
+  Award,
+  User,
+  Plus,
+  ArrowLeft,
+} from "lucide-react"
+import { leerlingenData } from "@/lib/data"
+import { useRouter } from "next/navigation"
+import { toast } from "@/hooks/use-toast"
 
 export default function LeerlingProfiel({ params }: { params: { id: string } }) {
-  const [leerling] = useState({
-    id: 1,
-    naam: "Abir (automaat) Alaweh",
-    telefoon: "0648222269",
-    email: "abiralaweh23@gmail.com",
-    adres: "Rodanstraat 30",
-    postcode: "3066LA",
-    plaats: "Rotterdam",
-    transmissie: "Automaat",
-    status: "Nieuw",
-    instructeur: "Leon Wilson",
-    datumLeerlingnummer: "294",
-    debiteurNummer: "40",
-    leerlingSinds: "08-07-2025",
-    tegoed: 0,
-    chatViaWhatsApp: true,
-  })
+  const router = useRouter()
+  const [leerling, setLeerling] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  const [lesGeschiedenis] = useState([
-    {
-      id: 1,
-      datum: "21 aug 25",
-      tijd: "08:00 (60min)",
-      rijles: "B - Praktijkexamen",
-      status: "Examen bij Borendrecht (aftel 8)",
-      type: "examen",
-      opmerkingen: "Uitstekend gereden, geen fouten gemaakt",
-    },
-    {
-      id: 2,
-      datum: "21 aug 25",
-      tijd: "07:30 (60min)",
-      rijles: "Rijles #10",
-      status: "Thuis ophalen (voorrijden)",
-      type: "les",
-      opmerkingen: "Goed geoefend met parkeren",
-    },
-    {
-      id: 3,
-      datum: "19 jul 25",
-      tijd: "10:30 (60min)",
-      rijles: "Rijles #9",
-      status: "Thuis ophalen (wil 30 min les)",
-      type: "les",
-      opmerkingen: "Voorrang oefenen, gaat steeds beter",
-    },
-    {
-      id: 4,
-      datum: "15 jul 25",
-      tijd: "11:30 (60min)",
-      rijles: "Rijles #8",
-      status: "Thuis ophalen (wil 30 min les)",
-      type: "les",
-      opmerkingen: "Inhalen geoefend, meer zelfvertrouwen",
-    },
-    {
-      id: 5,
-      datum: "12 jul 25",
-      tijd: "10:30 (60min)",
-      rijles: "Rijles #7",
-      status: "Thuis ophalen (wil 30 min les)",
-      type: "les",
-      opmerkingen: "Rotonde oefening, nog wat onzeker",
-    },
-  ])
+  useEffect(() => {
+    const leerlingId = Number.parseInt(params.id)
+    const gevondenLeerling = leerlingenData.find((l) => l.id === leerlingId)
+
+    if (gevondenLeerling) {
+      setLeerling(gevondenLeerling)
+    } else {
+      toast({
+        title: "Leerling niet gevonden",
+        description: "De opgevraagde leerling bestaat niet.",
+        variant: "destructive",
+      })
+      router.push("/leerlingen")
+    }
+    setLoading(false)
+  }, [params.id, router])
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="space-y-4">
+              <div className="h-32 bg-gray-200 rounded"></div>
+              <div className="h-32 bg-gray-200 rounded"></div>
+            </div>
+            <div className="md:col-span-2">
+              <div className="h-96 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!leerling) {
+    return null
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -94,13 +89,55 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
     return type === "examen" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
   }
 
+  const getInitials = (naam: string) => {
+    return naam
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+  }
+
+  const handleEditProfile = () => {
+    toast({
+      title: "Profiel bewerken",
+      description: "Profiel bewerken functionaliteit wordt binnenkort toegevoegd.",
+    })
+  }
+
+  const handleSendMessage = () => {
+    toast({
+      title: "Bericht versturen",
+      description: "Bericht functionaliteit wordt binnenkort toegevoegd.",
+    })
+  }
+
+  const handleUpdateTegoed = () => {
+    toast({
+      title: "Tegoed bijwerken",
+      description: "Tegoed bijwerken functionaliteit wordt binnenkort toegevoegd.",
+    })
+  }
+
+  const handleAddNote = () => {
+    toast({
+      title: "Notitie toevoegen",
+      description: "Notitie toevoegen functionaliteit wordt binnenkort toegevoegd.",
+    })
+  }
+
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/leerlingen")} className="mr-2">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Terug
+          </Button>
           <Avatar className="h-16 w-16">
-            <AvatarFallback className="bg-blue-100 text-blue-600 text-lg font-semibold">AaA</AvatarFallback>
+            <AvatarFallback className="bg-blue-100 text-blue-600 text-lg font-semibold">
+              {getInitials(leerling.naam)}
+            </AvatarFallback>
           </Avatar>
           <div>
             <h1 className="text-3xl font-bold">{leerling.naam}</h1>
@@ -114,11 +151,11 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleEditProfile}>
             <Edit className="h-4 w-4 mr-2" />
             Profiel bewerken
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleSendMessage}>
             <FileText className="h-4 w-4 mr-2" />
             Bericht sturen
           </Button>
@@ -176,7 +213,7 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Dation leerlingnummer:</span>
+                <span className="text-sm text-gray-600">Leerlingnummer:</span>
                 <span className="font-medium">{leerling.datumLeerlingnummer}</span>
               </div>
               <div className="flex justify-between">
@@ -203,7 +240,7 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">€ {leerling.tegoed.toFixed(2)}</div>
-              <Button variant="outline" size="sm" className="mt-2 bg-transparent">
+              <Button variant="outline" size="sm" className="mt-2 bg-transparent" onClick={handleUpdateTegoed}>
                 Tegoed bijwerken
               </Button>
             </CardContent>
@@ -229,25 +266,31 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {lesGeschiedenis.map((les) => (
-                      <div key={les.id} className="border-l-4 border-blue-200 pl-4 py-3">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-3">
-                              <Badge className={getRijlesColor(les.type)}>{les.rijles}</Badge>
-                              <span className="text-sm text-gray-600">
-                                {les.datum} - {les.tijd}
-                              </span>
+                    {leerling.lesGeschiedenis.length > 0 ? (
+                      leerling.lesGeschiedenis.map((les: any) => (
+                        <div key={les.id} className="border-l-4 border-blue-200 pl-4 py-3">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-3">
+                                <Badge className={getRijlesColor(les.type)}>{les.rijles}</Badge>
+                                <span className="text-sm text-gray-600">
+                                  {les.datum} - {les.tijd}
+                                </span>
+                              </div>
+                              <div className="text-sm font-medium">{les.status}</div>
+                              {les.opmerkingen && (
+                                <div className="text-sm text-gray-600 italic">"{les.opmerkingen}"</div>
+                              )}
                             </div>
-                            <div className="text-sm font-medium">{les.status}</div>
-                            {les.opmerkingen && <div className="text-sm text-gray-600 italic">"{les.opmerkingen}"</div>}
+                            <Button variant="ghost" size="sm">
+                              Leskaart
+                            </Button>
                           </div>
-                          <Button variant="ghost" size="sm">
-                            Leskaart
-                          </Button>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">Nog geen lessen gevolgd</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -263,16 +306,43 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">B - Praktijkexamen</div>
-                          <div className="text-sm text-gray-600">21 augustus 2025 - 08:00</div>
-                          <div className="text-sm text-green-600 font-medium">Geslaagd</div>
+                    {leerling.examens.length > 0 ? (
+                      leerling.examens.map((examen: any) => (
+                        <div
+                          key={examen.id}
+                          className={`p-4 border rounded-lg ${
+                            examen.status === "Geslaagd"
+                              ? "bg-green-50 border-green-200"
+                              : examen.status === "Gepland"
+                                ? "bg-blue-50 border-blue-200"
+                                : "bg-red-50 border-red-200"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{examen.type}</div>
+                              <div className="text-sm text-gray-600">
+                                {examen.datum} - {examen.tijd}
+                              </div>
+                              <div className="text-sm text-gray-600">{examen.locatie}</div>
+                            </div>
+                            <Badge
+                              className={
+                                examen.status === "Geslaagd"
+                                  ? "bg-green-100 text-green-800"
+                                  : examen.status === "Gepland"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-red-100 text-red-800"
+                              }
+                            >
+                              {examen.status}
+                            </Badge>
+                          </div>
                         </div>
-                        <Badge className="bg-green-100 text-green-800">Geslaagd</Badge>
-                      </div>
-                    </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">Nog geen examens gepland</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -291,14 +361,19 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 bg-blue-50 rounded-lg">
                         <div className="text-sm text-gray-600">Totaal Betaald</div>
-                        <div className="text-2xl font-bold text-blue-600">€ 1.250,00</div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          € {leerling.financieel.totaalBetaald.toFixed(2)}
+                        </div>
                       </div>
                       <div className="p-4 bg-green-50 rounded-lg">
                         <div className="text-sm text-gray-600">Huidig Tegoed</div>
                         <div className="text-2xl font-bold text-green-600">€ {leerling.tegoed.toFixed(2)}</div>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-600">Laatste betaling: 15 juli 2025 - € 300,00</div>
+                    <div className="text-sm text-gray-600">
+                      Laatste betaling: {leerling.financieel.laatsteBetaling.datum} - €{" "}
+                      {leerling.financieel.laatsteBetaling.bedrag.toFixed(2)}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -314,13 +389,19 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400">
-                      <div className="font-medium">Aandachtspunten</div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        Extra oefening nodig met parkeren en voorrang verlenen
+                    {leerling.status === "Nieuw" && (
+                      <div className="p-4 bg-blue-50 border-l-4 border-blue-400">
+                        <div className="font-medium">Nieuwe leerling</div>
+                        <div className="text-sm text-gray-600 mt-1">Eerste kennismaking en intake gepland</div>
                       </div>
-                    </div>
-                    <Button variant="outline" size="sm">
+                    )}
+                    {leerling.status === "Examen" && (
+                      <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400">
+                        <div className="font-medium">Examen gepland</div>
+                        <div className="text-sm text-gray-600 mt-1">Leerling staat op het punt om examen te doen</div>
+                      </div>
+                    )}
+                    <Button variant="outline" size="sm" onClick={handleAddNote}>
                       <Plus className="h-4 w-4 mr-2" />
                       Notitie toevoegen
                     </Button>
@@ -339,18 +420,22 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <div>
-                        <div className="font-medium">Praktijkexamen geslaagd</div>
-                        <div className="text-sm text-gray-600">21 augustus 2025</div>
+                    {leerling.status === "Geslaagd" && (
+                      <div className="flex items-center space-x-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div>
+                          <div className="font-medium">Praktijkexamen geslaagd</div>
+                          <div className="text-sm text-gray-600">
+                            {leerling.examens.find((e: any) => e.status === "Geslaagd")?.datum || "Recent"}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div className="flex items-center space-x-3">
                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                       <div>
-                        <div className="font-medium">Eerste rijles</div>
-                        <div className="text-sm text-gray-600">8 juli 2025</div>
+                        <div className="font-medium">Leerling geregistreerd</div>
+                        <div className="text-sm text-gray-600">{leerling.leerlingSinds}</div>
                       </div>
                     </div>
                   </div>
