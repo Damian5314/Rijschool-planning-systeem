@@ -52,29 +52,11 @@ export default function Dashboard() {
   const komendExamens = [
     {
       id: 1,
-      leerling: "Chenayra (automaat) Wijnstein",
+      leerling: "David Smit",
       instructeur: "Leon Wilson",
       datum: "14-07-2025",
       tijd: "14:00",
       type: "Praktijkexamen",
-      status: "Gepland",
-    },
-    {
-      id: 2,
-      leerling: "Demi (automaat) Amian",
-      instructeur: "Leon Wilson",
-      datum: "22-07-2025",
-      tijd: "09:50",
-      type: "Praktijkexamen",
-      status: "Gepland",
-    },
-    {
-      id: 3,
-      leerling: "Shareen (Willes-automaat) Mook",
-      instructeur: "Leon Wilson",
-      datum: "23-07-2025",
-      tijd: "11:30",
-      type: "BNOR examen",
       status: "Gepland",
     },
   ]

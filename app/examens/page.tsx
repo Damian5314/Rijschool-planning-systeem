@@ -35,7 +35,7 @@ export default function Examens() {
       transmissie: "Schakel",
       type: "Praktijkexamen",
       status: "Gepland",
-      locatie: "CBR Centrum Amsterdam",
+      locatie: "CBR Centrum Barendrecht",
       opmerkingen: "Eerste examenpoging",
     },
     {
@@ -47,7 +47,7 @@ export default function Examens() {
       transmissie: "Automaat",
       type: "Praktijkexamen",
       status: "Geslaagd",
-      locatie: "CBR Centrum Amsterdam",
+      locatie: "CBR Centrum Barendrecht",
       opmerkingen: "Uitstekend gereden, geen fouten",
       resultaat: "Geslaagd",
       punten: 0,
@@ -61,7 +61,7 @@ export default function Examens() {
       transmissie: "Schakel",
       type: "Praktijkexamen",
       status: "Gezakt",
-      locatie: "CBR Centrum Amsterdam",
+      locatie: "CBR Centrum Rotterdam",
       opmerkingen: "Problemen met parkeren en voorrang",
       resultaat: "Gezakt",
       punten: 8,
@@ -75,7 +75,7 @@ export default function Examens() {
       transmissie: "Automaat",
       type: "Praktijkexamen",
       status: "Gepland",
-      locatie: "CBR Centrum Haarlem",
+      locatie: "CBR Centrum Barendrecht",
       opmerkingen: "Tweede examenpoging",
     },
     {
@@ -87,7 +87,7 @@ export default function Examens() {
       transmissie: "Automaat",
       type: "Praktijkexamen",
       status: "Geslaagd",
-      locatie: "CBR Centrum Amsterdam",
+      locatie: "CBR Centrum Rotterdam",
       opmerkingen: "Zeer zelfverzekerd gereden",
       resultaat: "Geslaagd",
       punten: 2,
@@ -204,9 +204,9 @@ export default function Examens() {
                     <SelectValue placeholder="Selecteer CBR locatie" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="amsterdam">CBR Centrum Amsterdam</SelectItem>
-                    <SelectItem value="haarlem">CBR Centrum Haarlem</SelectItem>
-                    <SelectItem value="zaandam">CBR Centrum Zaandam</SelectItem>
+                    <SelectItem value="amsterdam">CBR Centrum Rotterdam</SelectItem>
+                    <SelectItem value="haarlem">CBR Centrum Barendrecht</SelectItem>
+                    <SelectItem value="zaandam">CBR Centrum Rijswijk</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
