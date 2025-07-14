@@ -110,6 +110,83 @@ export interface Invoice {
   updatedAt: string
 }
 
+// Rijschool instellingen interface
+export interface RijschoolSettings {
+  rijschoolNaam: string
+  adres: string
+  postcode: string
+  plaats: string
+  telefoon: string
+  email: string
+  website: string
+  kvkNummer: string
+  btwNummer?: string
+  iban?: string
+  openingstijden: {
+    maandag: { open: string; dicht: string; gesloten: boolean }
+    dinsdag: { open: string; dicht: string; gesloten: boolean }
+    woensdag: { open: string; dicht: string; gesloten: boolean }
+    donderdag: { open: string; dicht: string; gesloten: boolean }
+    vrijdag: { open: string; dicht: string; gesloten: boolean }
+    zaterdag: { open: string; dicht: string; gesloten: boolean }
+    zondag: { open: string; dicht: string; gesloten: boolean }
+  }
+  lesDuur: number
+  examenDuur: number
+  pauzeMinuten: number
+  emailNotificaties: boolean
+  smsNotificaties: boolean
+  herinneringVoorExamen: number
+  herinneringVoorLes: number
+  automatischeBackup: boolean
+  backupTijd: string
+  dataRetentie: number
+  prijsAutomaat: number
+  prijsSchakel: number
+  prijsExamen: number
+}
+
+// Rijschool instellingen data
+export const rijschoolSettings: RijschoolSettings = {
+  rijschoolNaam: "Willes-Rijschool",
+  adres: "Hoofdstraat 123",
+  postcode: "3011 AB",
+  plaats: "Rotterdam",
+  telefoon: "+31(6)15941215",
+  email: "info@willes-rijschool.nl",
+  website: "www.willesrijschool.nl",
+  kvkNummer: "81692471",
+  btwNummer: "NL123456789B01",
+  iban: "NL91 ABNA 0417 1643 00",
+
+  openingstijden: {
+    maandag: { open: "08:00", dicht: "20:00", gesloten: false },
+    dinsdag: { open: "08:00", dicht: "20:00", gesloten: false },
+    woensdag: { open: "08:00", dicht: "20:00", gesloten: false },
+    donderdag: { open: "08:00", dicht: "20:00", gesloten: false },
+    vrijdag: { open: "08:00", dicht: "20:00", gesloten: false },
+    zaterdag: { open: "09:00", dicht: "18:00", gesloten: false },
+    zondag: { open: "10:00", dicht: "16:00", gesloten: true },
+  },
+
+  lesDuur: 60,
+  examenDuur: 90,
+  pauzeMinuten: 15,
+
+  emailNotificaties: true,
+  smsNotificaties: true,
+  herinneringVoorExamen: 24,
+  herinneringVoorLes: 2,
+
+  automatischeBackup: true,
+  backupTijd: "03:00",
+  dataRetentie: 365,
+
+  prijsAutomaat: 48,
+  prijsSchakel: 52,
+  prijsExamen: 220,
+}
+
 // Mock data voor studenten
 export const mockStudents: Student[] = [
   {
@@ -365,3 +442,58 @@ export const calculateInvoiceTotals = (items: InvoiceItem[], taxRate = 21) => {
     total,
   }
 }
+
+// Legacy data voor backward compatibility
+export const leerlingenData = mockStudents.map((student) => ({
+  id: Number.parseInt(student.id),
+  naam: student.name,
+  telefoon: student.phone,
+  email: student.email,
+  adres: student.address.split(",")[0],
+  postcode: student.address.split(",")[1]?.split(" ")[1] + " " + student.address.split(",")[1]?.split(" ")[2] || "",
+  plaats: student.address.split(",")[1]?.split(" ").slice(3).join(" ") || "",
+  transmissie: student.licenseType === "B" ? "Automaat" : "Handgeschakeld",
+  status: student.status === "active" ? "Actief" : student.status === "passed" ? "Geslaagd" : "Nieuw",
+  instructeur: student.instructor,
+  datumLeerlingnummer: student.id.padStart(3, "0"),
+  debiteurNummer: (Number.parseInt(student.id) + 9).toString(),
+  leerlingSinds: new Date(student.startDate).toLocaleDateString("nl-NL"),
+  tegoed: Math.floor(Math.random() * 300),
+  chatViaWhatsApp: Math.random() > 0.5,
+  lesGeschiedenis: [],
+  examens: [],
+  financieel: {
+    totaalBetaald: Math.floor(Math.random() * 1500) + 500,
+    laatsteBetaling: {
+      datum: new Date().toLocaleDateString("nl-NL"),
+      bedrag: Math.floor(Math.random() * 300) + 100,
+    },
+  },
+}))
+
+export const facturenData = mockInvoices.map((invoice) => ({
+  id: Number.parseInt(invoice.id),
+  factuurNummer: invoice.invoiceNumber,
+  datum: invoice.date,
+  vervaldatum: invoice.dueDate,
+  leerlingId: Number.parseInt(invoice.studentId),
+  leerlingNaam: invoice.studentName,
+  leerlingEmail: invoice.studentEmail,
+  leerlingAdres: invoice.studentAddress,
+  instructeur: invoice.instructorName,
+  items: invoice.items.map((item) => ({
+    id: Number.parseInt(item.id),
+    beschrijving: item.description,
+    datum: item.date,
+    tijd: item.time || "",
+    duur: item.duration,
+    prijsPerUur: item.unitPrice,
+    korting: item.discount,
+    totaal: item.total,
+  })),
+  subtotaal: invoice.subtotal,
+  btw: invoice.taxAmount,
+  totaal: invoice.total,
+  status: invoice.status,
+  opmerkingen: invoice.notes,
+}))
