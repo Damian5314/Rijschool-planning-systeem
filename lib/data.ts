@@ -237,6 +237,21 @@ export const mockStudents: Student[] = [
     status: "passed",
     progress: 100,
   },
+  {
+    id: "3",
+    name: "Damian Willemse",
+    email: "boma5314@gmail.com",
+    phone: "06-11223344",
+    address: "Dorpsplein 67, 9012 EF Rotterdam",
+    dateOfBirth: "2005-11-08",
+    licenseType: "B",
+    startDate: "2023-11-10",
+    instructor: "Jan Jansen",
+    lessonCount: 42,
+    theoryPassed: true,
+    status: "passed",
+    progress: 100,
+  },
 ]
 
 // Mock data voor instructeurs
