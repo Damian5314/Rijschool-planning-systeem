@@ -1,181 +1,244 @@
 "use client"
 
-import type { ReactNode } from "react"
-import jsPDF from "jspdf"
+import type React from "react"
+
+import { Document, Page, Text, View, StyleSheet, PDFDownloadLink } from "@react-pdf/renderer"
+import { type Factuur, rijschoolSettings } from "@/lib/data"
 import { format } from "date-fns"
-import { toast } from "sonner"
-import type { Invoice } from "@/lib/data"
+import { nl } from "date-fns/locale"
 
-interface PDFGeneratorProps {
-  invoice: Invoice
-  children: ReactNode
+const styles = StyleSheet.create({
+  page: {
+    flexDirection: "column",
+    backgroundColor: "#FFFFFF",
+    padding: 30,
+    fontFamily: "Helvetica",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 30,
+  },
+  companyInfo: {
+    fontSize: 12,
+    lineHeight: 1.5,
+  },
+  companyName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  invoiceInfo: {
+    textAlign: "right",
+    fontSize: 12,
+    lineHeight: 1.5,
+  },
+  invoiceTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  customerInfo: {
+    marginBottom: 30,
+    fontSize: 12,
+    lineHeight: 1.5,
+  },
+  table: {
+    display: "table",
+    width: "auto",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+    marginBottom: 20,
+  },
+  tableRow: {
+    margin: "auto",
+    flexDirection: "row",
+  },
+  tableColHeader: {
+    width: "14.28%",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+    backgroundColor: "#f0f0f0",
+    padding: 8,
+  },
+  tableCol: {
+    width: "14.28%",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+    padding: 8,
+  },
+  tableCellHeader: {
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  tableCell: {
+    fontSize: 9,
+  },
+  totals: {
+    marginTop: 20,
+    alignItems: "flex-end",
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: 200,
+    marginBottom: 5,
+    fontSize: 12,
+  },
+  totalRowFinal: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: 200,
+    marginBottom: 5,
+    fontSize: 14,
+    fontWeight: "bold",
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    paddingTop: 5,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 30,
+    left: 30,
+    right: 30,
+    textAlign: "center",
+    fontSize: 10,
+    color: "#666",
+  },
+})
+
+interface FactuurPDFProps {
+  factuur: Factuur
 }
 
-export function PDFGenerator({ invoice, children }: PDFGeneratorProps) {
-  const generatePDF = () => {
-    try {
-      const doc = new jsPDF()
+const FactuurPDF = ({ factuur }: FactuurPDFProps) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.companyName}>{rijschoolSettings.rijschoolNaam}</Text>
+          <Text style={styles.companyInfo}>
+            {rijschoolSettings.plaats}
+            {"\n"}
+            {rijschoolSettings.telefoon}
+            {"\n"}
+            {rijschoolSettings.email}
+            {"\n"}
+            KvK: {rijschoolSettings.kvkNummer}
+          </Text>
+        </View>
+        <View style={styles.invoiceInfo}>
+          <Text>Factuurnummer: {factuur.factuurNummer}</Text>
+          <Text>Factuurdatum: {format(new Date(factuur.datum), "dd MMMM yyyy", { locale: nl })}</Text>
+          <Text>Vervaldatum: {format(new Date(factuur.vervaldatum), "dd MMMM yyyy", { locale: nl })}</Text>
+        </View>
+      </View>
 
-      // Rijschool header
-      doc.setFontSize(20)
-      doc.setFont("helvetica", "bold")
-      doc.text("Willes-Rijschool", 20, 30)
+      <Text style={styles.invoiceTitle}>FACTUUR</Text>
 
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "normal")
-      doc.text("Hoofdstraat 123", 20, 40)
-      doc.text("1234 AB Amsterdam", 20, 45)
-      doc.text("Tel: 020-1234567", 20, 50)
-      doc.text("Email: info@willes-rijschool.nl", 20, 55)
-      doc.text("KvK: 12345678", 20, 60)
-      doc.text("BTW: NL123456789B01", 20, 65)
+      {/* Customer Info */}
+      <View style={styles.customerInfo}>
+        <Text>Factuur aan:</Text>
+        <Text>{factuur.leerlingNaam}</Text>
+        <Text>{factuur.leerlingAdres}</Text>
+        <Text>{factuur.leerlingEmail}</Text>
+      </View>
 
-      // Factuur titel
-      doc.setFontSize(16)
-      doc.setFont("helvetica", "bold")
-      doc.text("FACTUUR", 150, 30)
+      {/* Items Table */}
+      <View style={styles.table}>
+        <View style={styles.tableRow}>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Beschrijving</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Datum</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Tijd</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Duur</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Prijs/uur</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Korting</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Totaal</Text>
+          </View>
+        </View>
+        {factuur.items.map((item) => (
+          <View style={styles.tableRow} key={item.id}>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>{item.beschrijving}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>{format(new Date(item.datum), "dd/MM/yyyy", { locale: nl })}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>{item.tijd}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>{item.duur} min</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>€ {item.prijsPerUur}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>€ {item.korting}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>€ {item.totaal.toFixed(2)}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
 
-      // Factuur info
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "normal")
-      doc.text(`Factuurnummer: ${invoice.invoiceNumber}`, 150, 40)
-      doc.text(`Datum: ${format(new Date(invoice.date), "dd-MM-yyyy")}`, 150, 45)
-      doc.text(`Vervaldatum: ${format(new Date(invoice.dueDate), "dd-MM-yyyy")}`, 150, 50)
+      {/* Totals */}
+      <View style={styles.totals}>
+        <View style={styles.totalRow}>
+          <Text>Subtotaal:</Text>
+          <Text>€ {factuur.subtotaal.toFixed(2)}</Text>
+        </View>
+        <View style={styles.totalRow}>
+          <Text>BTW (21%):</Text>
+          <Text>€ {factuur.btw.toFixed(2)}</Text>
+        </View>
+        <View style={styles.totalRowFinal}>
+          <Text>Totaal:</Text>
+          <Text>€ {factuur.totaal.toFixed(2)}</Text>
+        </View>
+      </View>
 
-      // Klant info
-      doc.setFontSize(12)
-      doc.setFont("helvetica", "bold")
-      doc.text("Factuuradres:", 20, 85)
+      {/* Footer */}
+      <Text style={styles.footer}>
+        Gelieve het factuurbedrag binnen 30 dagen over te maken naar rekeningnummer NL00 BANK 0000 0000 00
+        {"\n"}
+        onder vermelding van het factuurnummer {factuur.factuurNummer}
+      </Text>
+    </Page>
+  </Document>
+)
 
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "normal")
-      doc.text(invoice.studentName, 20, 95)
-
-      // Adres splitsen op komma's
-      const addressParts = invoice.studentAddress.split(", ")
-      let yPos = 100
-      addressParts.forEach((part) => {
-        doc.text(part, 20, yPos)
-        yPos += 5
-      })
-
-      // Items tabel header
-      const tableStartY = 130
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "bold")
-
-      // Tabel headers
-      doc.text("Beschrijving", 20, tableStartY)
-      doc.text("Datum", 80, tableStartY)
-      doc.text("Tijd", 110, tableStartY)
-      doc.text("Duur", 130, tableStartY)
-      doc.text("Prijs", 150, tableStartY)
-      doc.text("Korting", 170, tableStartY)
-      doc.text("Totaal", 190, tableStartY)
-
-      // Lijn onder header
-      doc.line(20, tableStartY + 2, 200, tableStartY + 2)
-
-      // Items
-      doc.setFont("helvetica", "normal")
-      let currentY = tableStartY + 10
-
-      invoice.items.forEach((item) => {
-        // Beschrijving (kan lang zijn, dus wrappen)
-        const description = item.description
-        if (description.length > 25) {
-          const words = description.split(" ")
-          let line = ""
-          let lineY = currentY
-
-          words.forEach((word) => {
-            if ((line + word).length > 25) {
-              doc.text(line, 20, lineY)
-              line = word + " "
-              lineY += 5
-            } else {
-              line += word + " "
-            }
-          })
-          if (line.trim()) {
-            doc.text(line.trim(), 20, lineY)
-          }
-          currentY = lineY
-        } else {
-          doc.text(description, 20, currentY)
-        }
-
-        doc.text(format(new Date(item.date), "dd-MM"), 80, currentY)
-        doc.text(item.time || "-", 110, currentY)
-        doc.text(`${item.duration}m`, 130, currentY)
-        doc.text(`€${item.unitPrice.toFixed(2)}`, 150, currentY)
-        doc.text(item.discount > 0 ? `-€${item.discount.toFixed(2)}` : "-", 170, currentY)
-        doc.text(`€${item.total.toFixed(2)}`, 190, currentY)
-
-        currentY += 10
-      })
-
-      // Totalen sectie
-      const totalsStartY = currentY + 10
-      doc.line(20, totalsStartY, 200, totalsStartY)
-
-      let totalsY = totalsStartY + 10
-
-      // Subtotaal
-      doc.text("Subtotaal:", 150, totalsY)
-      doc.text(`€${invoice.subtotal.toFixed(2)}`, 190, totalsY)
-      totalsY += 8
-
-      // Korting (als van toepassing)
-      if (invoice.discount > 0) {
-        doc.text("Korting:", 150, totalsY)
-        doc.text(`-€${invoice.discount.toFixed(2)}`, 190, totalsY)
-        totalsY += 8
-      }
-
-      // BTW
-      doc.text(`BTW (${invoice.taxRate}%):`, 150, totalsY)
-      doc.text(`€${invoice.taxAmount.toFixed(2)}`, 190, totalsY)
-      totalsY += 8
-
-      // Totaal
-      doc.setFont("helvetica", "bold")
-      doc.text("Totaal:", 150, totalsY)
-      doc.text(`€${invoice.total.toFixed(2)}`, 190, totalsY)
-
-      // Betalingsinformatie
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(9)
-      const paymentY = totalsY + 20
-      doc.text("Betalingsinformatie:", 20, paymentY)
-      doc.text("IBAN: NL12 ABCD 0123 4567 89", 20, paymentY + 8)
-      doc.text("BIC: ABCDNL2A", 20, paymentY + 16)
-      doc.text(`Betalingskenmerk: ${invoice.invoiceNumber}`, 20, paymentY + 24)
-      doc.text(`Gelieve binnen 30 dagen te betalen`, 20, paymentY + 32)
-
-      // Notities (als van toepassing)
-      if (invoice.notes) {
-        doc.text("Notities:", 20, paymentY + 44)
-        doc.text(invoice.notes, 20, paymentY + 52)
-      }
-
-      // Footer
-      doc.setFontSize(8)
-      doc.text("Willes-Rijschool - Uw partner in rijopleidingen", 105, 280, { align: "center" })
-
-      // Download PDF
-      doc.save(`Factuur_${invoice.invoiceNumber}.pdf`)
-
-      toast.success(`PDF van factuur ${invoice.invoiceNumber} gedownload`)
-    } catch (error) {
-      console.error("Error generating PDF:", error)
-      toast.error("Fout bij genereren van PDF")
-    }
-  }
-
-  return (
-    <div onClick={generatePDF} style={{ cursor: "pointer" }}>
-      {children}
-    </div>
-  )
+interface PDFDownloadButtonProps {
+  factuur: Factuur
+  children: React.ReactNode
 }
+
+export const PDFDownloadButton = ({ factuur, children }: PDFDownloadButtonProps) => (
+  <PDFDownloadLink document={<FactuurPDF factuur={factuur} />} fileName={`factuur-${factuur.factuurNummer}.pdf`}>
+    {children}
+  </PDFDownloadLink>
+)
+
+export default FactuurPDF
