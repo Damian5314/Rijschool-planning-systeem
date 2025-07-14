@@ -172,7 +172,7 @@ export const leerlingenData = [
   },
   {
     id: 4,
-    naam: "David Smit	",
+    naam: "David Smit",
     telefoon: "06-55667788",
     email: "david@email.com",
     adres: "Schoolstraat 89",
@@ -271,3 +271,101 @@ export const rijschoolSettings = {
   prijsSchakel: 52,
   prijsExamen: 220,
 }
+
+// Factuur data
+export interface Factuur {
+  id: number
+  factuurNummer: string
+  datum: string
+  vervaldatum: string
+  leerlingId: number
+  leerlingNaam: string
+  leerlingEmail: string
+  leerlingAdres: string
+  instructeur: string
+  items: FactuurItem[]
+  subtotaal: number
+  btw: number
+  totaal: number
+  status: "concept" | "verzonden" | "betaald" | "vervallen"
+  opmerkingen?: string
+}
+
+export interface FactuurItem {
+  id: number
+  beschrijving: string
+  datum: string
+  tijd: string
+  duur: number // in minuten
+  prijsPerUur: number
+  korting: number
+  totaal: number
+}
+
+export const facturenData: Factuur[] = [
+  {
+    id: 1,
+    factuurNummer: "WR-2025-001",
+    datum: "2025-01-15",
+    vervaldatum: "2025-02-14",
+    leerlingId: 1,
+    leerlingNaam: "Emma van der Berg",
+    leerlingEmail: "emma.vandenberg@email.com",
+    leerlingAdres: "Kerkstraat 45, 1234 AB Amsterdam",
+    instructeur: "Jan Willems",
+    items: [
+      {
+        id: 1,
+        beschrijving: "Rijles #4",
+        datum: "2025-01-08",
+        tijd: "14:00",
+        duur: 60,
+        prijsPerUur: 48,
+        korting: 0,
+        totaal: 48,
+      },
+      {
+        id: 2,
+        beschrijving: "Rijles #5",
+        datum: "2025-01-10",
+        tijd: "10:00",
+        duur: 60,
+        prijsPerUur: 48,
+        korting: 0,
+        totaal: 48,
+      },
+    ],
+    subtotaal: 96,
+    btw: 20.16,
+    totaal: 116.16,
+    status: "verzonden",
+    opmerkingen: "Betaling binnen 30 dagen",
+  },
+  {
+    id: 2,
+    factuurNummer: "WR-2025-002",
+    datum: "2025-01-20",
+    vervaldatum: "2025-02-19",
+    leerlingId: 2,
+    leerlingNaam: "Tom Jansen",
+    leerlingEmail: "tom@email.com",
+    leerlingAdres: "Kerkstraat 45, 5678 CD Rotterdam",
+    instructeur: "Leon Wilson",
+    items: [
+      {
+        id: 1,
+        beschrijving: "Rijlespakket 5 lessen",
+        datum: "2025-01-15",
+        tijd: "Diverse tijden",
+        duur: 300, // 5 x 60 minuten
+        prijsPerUur: 52,
+        korting: 20, // 5% korting op pakket
+        totaal: 240,
+      },
+    ],
+    subtotaal: 240,
+    btw: 50.4,
+    totaal: 290.4,
+    status: "betaald",
+  },
+]
