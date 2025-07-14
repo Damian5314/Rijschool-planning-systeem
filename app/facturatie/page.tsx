@@ -1,13 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { Plus, Search, Filter, Download, Mail, Eye, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -16,735 +14,713 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { toast } from "@/hooks/use-toast"
-import { Plus, Search, Download, Mail, Eye, Trash2, CalendarIcon, Receipt, Euro, Send } from "lucide-react"
-import { facturenData, leerlingenData, rijschoolSettings, type Factuur, type FactuurItem } from "@/lib/data"
+import { toast } from "sonner"
 import { format } from "date-fns"
 import { nl } from "date-fns/locale"
-import { cn } from "@/lib/utils"
+import {
+  mockInvoices,
+  mockStudents,
+  mockInstructors,
+  generateInvoiceNumber,
+  calculateInvoiceTotals,
+  type Invoice,
+  type InvoiceItem,
+} from "@/lib/data"
+import { PDFGenerator } from "@/components/pdf-generator"
+
+const statusColors = {
+  concept: "bg-gray-100 text-gray-800",
+  verzonden: "bg-blue-100 text-blue-800",
+  betaald: "bg-green-100 text-green-800",
+  vervallen: "bg-red-100 text-red-800",
+}
+
+const statusLabels = {
+  concept: "Concept",
+  verzonden: "Verzonden",
+  betaald: "Betaald",
+  vervallen: "Vervallen",
+}
 
 export default function FacturatiePage() {
-  const [facturen, setFacturen] = useState<Factuur[]>(facturenData)
+  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices)
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("alle")
-  const [selectedFactuur, setSelectedFactuur] = useState<Factuur | null>(null)
-  const [isNewFactuurOpen, setIsNewFactuurOpen] = useState(false)
-  const [isViewOpen, setIsViewOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
 
   // Nieuwe factuur state
-  const [newFactuur, setNewFactuur] = useState({
-    leerlingId: "",
-    datum: new Date(),
-    vervaldatum: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dagen later
-    items: [] as FactuurItem[],
-    opmerkingen: "",
+  const [newInvoice, setNewInvoice] = useState({
+    studentId: "",
+    instructorId: "",
+    items: [] as InvoiceItem[],
+    notes: "",
   })
 
   const [newItem, setNewItem] = useState({
-    beschrijving: "",
-    datum: new Date(),
-    tijd: "",
-    duur: 60,
-    prijsPerUur: 48,
-    korting: 0,
+    description: "",
+    date: format(new Date(), "yyyy-MM-dd"),
+    time: "",
+    duration: 60,
+    unitPrice: 48,
+    quantity: 1,
+    discount: 0,
   })
 
-  const filteredFacturen = facturen.filter((factuur) => {
+  // Filter facturen
+  const filteredInvoices = invoices.filter((invoice) => {
     const matchesSearch =
-      factuur.leerlingNaam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      factuur.factuurNummer.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "alle" || factuur.status === statusFilter
+      invoice.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === "all" || invoice.status === statusFilter
     return matchesSearch && matchesStatus
   })
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "concept":
-        return "bg-gray-100 text-gray-800"
-      case "verzonden":
-        return "bg-blue-100 text-blue-800"
-      case "betaald":
-        return "bg-green-100 text-green-800"
-      case "vervallen":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
+  // Statistieken
+  const stats = {
+    total: invoices.length,
+    concept: invoices.filter((i) => i.status === "concept").length,
+    verzonden: invoices.filter((i) => i.status === "verzonden").length,
+    betaald: invoices.filter((i) => i.status === "betaald").length,
+    vervallen: invoices.filter((i) => i.status === "vervallen").length,
+    totalAmount: invoices.reduce((sum, i) => sum + i.total, 0),
+    paidAmount: invoices.filter((i) => i.status === "betaald").reduce((sum, i) => sum + i.total, 0),
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "concept":
-        return "Concept"
-      case "verzonden":
-        return "Verzonden"
-      case "betaald":
-        return "Betaald"
-      case "vervallen":
-        return "Vervallen"
-      default:
-        return status
-    }
-  }
-
-  const addItemToFactuur = () => {
-    if (!newItem.beschrijving || !newItem.tijd) {
-      toast({
-        title: "Velden ontbreken",
-        description: "Vul alle verplichte velden in.",
-        variant: "destructive",
-      })
+  const handleAddItem = () => {
+    if (!newItem.description) {
+      toast.error("Beschrijving is verplicht")
       return
     }
 
-    const totaal = (newItem.duur / 60) * newItem.prijsPerUur - newItem.korting
-    const item: FactuurItem = {
-      id: Date.now(),
-      ...newItem,
-      datum: format(newItem.datum, "yyyy-MM-dd"),
-      totaal,
+    const item: InvoiceItem = {
+      id: Date.now().toString(),
+      description: newItem.description,
+      date: newItem.date,
+      time: newItem.time,
+      duration: newItem.duration,
+      unitPrice: newItem.unitPrice,
+      quantity: newItem.quantity,
+      discount: newItem.discount,
+      total: newItem.unitPrice * newItem.quantity - newItem.discount,
     }
 
-    setNewFactuur((prev) => ({
+    setNewInvoice((prev) => ({
       ...prev,
       items: [...prev.items, item],
     }))
 
     // Reset form
     setNewItem({
-      beschrijving: "",
-      datum: new Date(),
-      tijd: "",
-      duur: 60,
-      prijsPerUur: 48,
-      korting: 0,
+      description: "",
+      date: format(new Date(), "yyyy-MM-dd"),
+      time: "",
+      duration: 60,
+      unitPrice: 48,
+      quantity: 1,
+      discount: 0,
     })
 
-    toast({
-      title: "Item toegevoegd",
-      description: "Het item is toegevoegd aan de factuur.",
-    })
+    toast.success("Item toegevoegd")
   }
 
-  const removeItemFromFactuur = (itemId: number) => {
-    setNewFactuur((prev) => ({
+  const handleRemoveItem = (itemId: string) => {
+    setNewInvoice((prev) => ({
       ...prev,
       items: prev.items.filter((item) => item.id !== itemId),
     }))
+    toast.success("Item verwijderd")
   }
 
-  const calculateTotals = (items: FactuurItem[]) => {
-    const subtotaal = items.reduce((sum, item) => sum + item.totaal, 0)
-    const btw = subtotaal * 0.21 // 21% BTW
-    const totaal = subtotaal + btw
-    return { subtotaal, btw, totaal }
-  }
-
-  const createFactuur = () => {
-    if (!newFactuur.leerlingId || newFactuur.items.length === 0) {
-      toast({
-        title: "Factuur onvolledig",
-        description: "Selecteer een leerling en voeg minimaal één item toe.",
-        variant: "destructive",
-      })
+  const handleCreateInvoice = () => {
+    if (!newInvoice.studentId || !newInvoice.instructorId || newInvoice.items.length === 0) {
+      toast.error("Vul alle verplichte velden in en voeg minimaal één item toe")
       return
     }
 
-    const leerling = leerlingenData.find((l) => l.id === Number.parseInt(newFactuur.leerlingId))
-    if (!leerling) return
+    const student = mockStudents.find((s) => s.id === newInvoice.studentId)
+    const instructor = mockInstructors.find((i) => i.id === newInvoice.instructorId)
 
-    const { subtotaal, btw, totaal } = calculateTotals(newFactuur.items)
-    const factuurNummer = `WR-${new Date().getFullYear()}-${String(facturen.length + 1).padStart(3, "0")}`
-
-    const factuur: Factuur = {
-      id: Date.now(),
-      factuurNummer,
-      datum: format(newFactuur.datum, "yyyy-MM-dd"),
-      vervaldatum: format(newFactuur.vervaldatum, "yyyy-MM-dd"),
-      leerlingId: leerling.id,
-      leerlingNaam: leerling.naam,
-      leerlingEmail: leerling.email,
-      leerlingAdres: `${leerling.adres}, ${leerling.postcode} ${leerling.plaats}`,
-      instructeur: leerling.instructeur,
-      items: newFactuur.items,
-      subtotaal,
-      btw,
-      totaal,
-      status: "concept",
-      opmerkingen: newFactuur.opmerkingen,
+    if (!student || !instructor) {
+      toast.error("Student of instructeur niet gevonden")
+      return
     }
 
-    setFacturen((prev) => [factuur, ...prev])
-    setIsNewFactuurOpen(false)
+    const totals = calculateInvoiceTotals(newInvoice.items)
+    const now = new Date()
+
+    const invoice: Invoice = {
+      id: Date.now().toString(),
+      invoiceNumber: generateInvoiceNumber(),
+      studentId: newInvoice.studentId,
+      studentName: student.name,
+      studentEmail: student.email,
+      studentAddress: student.address,
+      instructorId: newInvoice.instructorId,
+      instructorName: instructor.name,
+      date: format(now, "yyyy-MM-dd"),
+      dueDate: format(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+      items: newInvoice.items,
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      taxRate: 21,
+      taxAmount: totals.taxAmount,
+      total: totals.total,
+      status: "concept",
+      notes: newInvoice.notes,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    }
+
+    setInvoices((prev) => [invoice, ...prev])
+    setIsCreateDialogOpen(false)
 
     // Reset form
-    setNewFactuur({
-      leerlingId: "",
-      datum: new Date(),
-      vervaldatum: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    setNewInvoice({
+      studentId: "",
+      instructorId: "",
       items: [],
-      opmerkingen: "",
+      notes: "",
     })
 
-    toast({
-      title: "Factuur aangemaakt",
-      description: `Factuur ${factuurNummer} is succesvol aangemaakt.`,
-    })
+    toast.success("Factuur aangemaakt")
   }
 
-  const downloadPDF = (factuur: Factuur) => {
-    toast({
-      title: "PDF wordt gegenereerd",
-      description: "De factuur wordt als PDF gedownload...",
-    })
-    // Hier zou de PDF generatie komen
+  const handleSendInvoice = async (invoice: Invoice) => {
+    try {
+      // Mock email verzending
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      setInvoices((prev) =>
+        prev.map((i) =>
+          i.id === invoice.id ? { ...i, status: "verzonden" as const, updatedAt: new Date().toISOString() } : i,
+        ),
+      )
+
+      toast.success(`Factuur ${invoice.invoiceNumber} verzonden naar ${invoice.studentEmail}`)
+    } catch (error) {
+      toast.error("Fout bij verzenden van factuur")
+    }
   }
 
-  const sendEmail = (factuur: Factuur) => {
-    toast({
-      title: "Email wordt verzonden",
-      description: `Factuur wordt verzonden naar ${factuur.leerlingEmail}`,
-    })
-
-    // Update status naar verzonden
-    setFacturen((prev) => prev.map((f) => (f.id === factuur.id ? { ...f, status: "verzonden" as const } : f)))
+  const handleDownloadPDF = (invoice: Invoice) => {
+    // PDF download wordt gehandeld door PDFGenerator component
+    toast.success(`PDF van factuur ${invoice.invoiceNumber} wordt gedownload`)
   }
 
-  const viewFactuur = (factuur: Factuur) => {
-    setSelectedFactuur(factuur)
-    setIsViewOpen(true)
+  const handleViewInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice)
+    setIsViewDialogOpen(true)
   }
 
-  const deleteFactuur = (factuurId: number) => {
-    setFacturen((prev) => prev.filter((f) => f.id !== factuurId))
-    toast({
-      title: "Factuur verwijderd",
-      description: "De factuur is succesvol verwijderd.",
-    })
+  const handleStatusChange = (invoiceId: string, newStatus: Invoice["status"]) => {
+    setInvoices((prev) =>
+      prev.map((i) => (i.id === invoiceId ? { ...i, status: newStatus, updatedAt: new Date().toISOString() } : i)),
+    )
+    toast.success("Status bijgewerkt")
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Facturatie</h1>
-          <p className="text-muted-foreground">Beheer facturen en betalingen</p>
-        </div>
-        <Dialog open={isNewFactuurOpen} onOpenChange={setIsNewFactuurOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Nieuwe Factuur
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Nieuwe Factuur Aanmaken</DialogTitle>
-              <DialogDescription>Maak een nieuwe factuur aan voor een leerling</DialogDescription>
-            </DialogHeader>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Facturatie</h1>
+            <p className="text-gray-600">Beheer facturen en betalingen</p>
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Nieuwe Factuur
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Nieuwe Factuur Aanmaken</DialogTitle>
+                <DialogDescription>Maak een nieuwe factuur aan voor een leerling</DialogDescription>
+              </DialogHeader>
 
-            <div className="space-y-6">
-              {/* Leerling selectie */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="leerling">Leerling</Label>
-                  <Select
-                    value={newFactuur.leerlingId}
-                    onValueChange={(value) => setNewFactuur((prev) => ({ ...prev, leerlingId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer leerling" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leerlingenData.map((leerling) => (
-                        <SelectItem key={leerling.id} value={leerling.id.toString()}>
-                          {leerling.naam}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vervaldatum">Vervaldatum</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !newFactuur.vervaldatum && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {newFactuur.vervaldatum
-                          ? format(newFactuur.vervaldatum, "PPP", { locale: nl })
-                          : "Selecteer datum"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={newFactuur.vervaldatum}
-                        onSelect={(date) => date && setNewFactuur((prev) => ({ ...prev, vervaldatum: date }))}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              {/* Item toevoegen */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Item Toevoegen</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="beschrijving">Beschrijving</Label>
-                      <Input
-                        id="beschrijving"
-                        value={newItem.beschrijving}
-                        onChange={(e) => setNewItem((prev) => ({ ...prev, beschrijving: e.target.value }))}
-                        placeholder="Bijv. Rijles #1"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="tijd">Tijd</Label>
-                      <Input
-                        id="tijd"
-                        type="time"
-                        value={newItem.tijd}
-                        onChange={(e) => setNewItem((prev) => ({ ...prev, tijd: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="datum">Datum</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !newItem.datum && "text-muted-foreground",
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(newItem.datum, "dd/MM", { locale: nl })}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={newItem.datum}
-                            onSelect={(date) => date && setNewItem((prev) => ({ ...prev, datum: date }))}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="duur">Duur (min)</Label>
-                      <Input
-                        id="duur"
-                        type="number"
-                        value={newItem.duur}
-                        onChange={(e) => setNewItem((prev) => ({ ...prev, duur: Number.parseInt(e.target.value) }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="prijsPerUur">Prijs/uur (€)</Label>
-                      <Input
-                        id="prijsPerUur"
-                        type="number"
-                        step="0.01"
-                        value={newItem.prijsPerUur}
-                        onChange={(e) =>
-                          setNewItem((prev) => ({ ...prev, prijsPerUur: Number.parseFloat(e.target.value) }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="korting">Korting (€)</Label>
-                      <Input
-                        id="korting"
-                        type="number"
-                        step="0.01"
-                        value={newItem.korting}
-                        onChange={(e) =>
-                          setNewItem((prev) => ({ ...prev, korting: Number.parseFloat(e.target.value) }))
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <Button onClick={addItemToFactuur} className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Item Toevoegen
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Items overzicht */}
-              {newFactuur.items.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Factuur Items</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Beschrijving</TableHead>
-                          <TableHead>Datum</TableHead>
-                          <TableHead>Tijd</TableHead>
-                          <TableHead>Duur</TableHead>
-                          <TableHead>Prijs</TableHead>
-                          <TableHead>Korting</TableHead>
-                          <TableHead>Totaal</TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {newFactuur.items.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.beschrijving}</TableCell>
-                            <TableCell>{format(new Date(item.datum), "dd/MM/yyyy", { locale: nl })}</TableCell>
-                            <TableCell>{item.tijd}</TableCell>
-                            <TableCell>{item.duur} min</TableCell>
-                            <TableCell>€ {item.prijsPerUur}</TableCell>
-                            <TableCell>€ {item.korting}</TableCell>
-                            <TableCell>€ {item.totaal.toFixed(2)}</TableCell>
-                            <TableCell>
-                              <Button variant="ghost" size="sm" onClick={() => removeItemFromFactuur(item.id)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
+              <div className="space-y-6">
+                {/* Basis informatie */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="student">Leerling *</Label>
+                    <Select
+                      value={newInvoice.studentId}
+                      onValueChange={(value) => setNewInvoice((prev) => ({ ...prev, studentId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecteer leerling" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mockStudents.map((student) => (
+                          <SelectItem key={student.id} value={student.id}>
+                            {student.name}
+                          </SelectItem>
                         ))}
-                      </TableBody>
-                    </Table>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                    {/* Totalen */}
-                    <div className="mt-4 space-y-2 text-right">
-                      <div className="flex justify-end space-x-4">
-                        <span>Subtotaal:</span>
-                        <span>€ {calculateTotals(newFactuur.items).subtotaal.toFixed(2)}</span>
+                  <div>
+                    <Label htmlFor="instructor">Instructeur *</Label>
+                    <Select
+                      value={newInvoice.instructorId}
+                      onValueChange={(value) => setNewInvoice((prev) => ({ ...prev, instructorId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecteer instructeur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mockInstructors.map((instructor) => (
+                          <SelectItem key={instructor.id} value={instructor.id}>
+                            {instructor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Items toevoegen */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Items</h3>
+
+                  {/* Nieuw item formulier */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Nieuw Item Toevoegen</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="description">Beschrijving *</Label>
+                          <Input
+                            id="description"
+                            value={newItem.description}
+                            onChange={(e) => setNewItem((prev) => ({ ...prev, description: e.target.value }))}
+                            placeholder="Bijv. Rijles - Automaat"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="date">Datum</Label>
+                          <Input
+                            id="date"
+                            type="date"
+                            value={newItem.date}
+                            onChange={(e) => setNewItem((prev) => ({ ...prev, date: e.target.value }))}
+                          />
+                        </div>
                       </div>
-                      <div className="flex justify-end space-x-4">
-                        <span>BTW (21%):</span>
-                        <span>€ {calculateTotals(newFactuur.items).btw.toFixed(2)}</span>
+
+                      <div className="grid grid-cols-4 gap-4">
+                        <div>
+                          <Label htmlFor="time">Tijd</Label>
+                          <Input
+                            id="time"
+                            type="time"
+                            value={newItem.time}
+                            onChange={(e) => setNewItem((prev) => ({ ...prev, time: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="duration">Duur (min)</Label>
+                          <Input
+                            id="duration"
+                            type="number"
+                            value={newItem.duration}
+                            onChange={(e) =>
+                              setNewItem((prev) => ({ ...prev, duration: Number.parseInt(e.target.value) || 0 }))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="unitPrice">Prijs per uur (€)</Label>
+                          <Input
+                            id="unitPrice"
+                            type="number"
+                            step="0.01"
+                            value={newItem.unitPrice}
+                            onChange={(e) =>
+                              setNewItem((prev) => ({ ...prev, unitPrice: Number.parseFloat(e.target.value) || 0 }))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="discount">Korting (€)</Label>
+                          <Input
+                            id="discount"
+                            type="number"
+                            step="0.01"
+                            value={newItem.discount}
+                            onChange={(e) =>
+                              setNewItem((prev) => ({ ...prev, discount: Number.parseFloat(e.target.value) || 0 }))
+                            }
+                          />
+                        </div>
                       </div>
-                      <Separator />
-                      <div className="flex justify-end space-x-4 font-bold text-lg">
-                        <span>Totaal:</span>
-                        <span>€ {calculateTotals(newFactuur.items).totaal.toFixed(2)}</span>
+
+                      <Button onClick={handleAddItem} className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Item Toevoegen
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Items lijst */}
+                  {newInvoice.items.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Toegevoegde Items</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {newInvoice.items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div className="flex-1">
+                                <div className="font-medium">{item.description}</div>
+                                <div className="text-sm text-gray-600">
+                                  {format(new Date(item.date), "dd MMM yyyy", { locale: nl })}
+                                  {item.time && ` om ${item.time}`} • {item.duration} min • €{item.unitPrice}/uur
+                                  {item.discount > 0 && ` • Korting: €${item.discount}`}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="font-semibold">€{item.total.toFixed(2)}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveItem(item.id)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Totalen */}
+                        <Separator className="my-4" />
+                        <div className="space-y-2">
+                          {(() => {
+                            const totals = calculateInvoiceTotals(newInvoice.items)
+                            return (
+                              <>
+                                <div className="flex justify-between">
+                                  <span>Subtotaal:</span>
+                                  <span>€{totals.subtotal.toFixed(2)}</span>
+                                </div>
+                                {totals.discount > 0 && (
+                                  <div className="flex justify-between text-red-600">
+                                    <span>Korting:</span>
+                                    <span>-€{totals.discount.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <span>BTW (21%):</span>
+                                  <span>€{totals.taxAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-lg">
+                                  <span>Totaal:</span>
+                                  <span>€{totals.total.toFixed(2)}</span>
+                                </div>
+                              </>
+                            )
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Notities */}
+                <div>
+                  <Label htmlFor="notes">Notities</Label>
+                  <Textarea
+                    id="notes"
+                    value={newInvoice.notes}
+                    onChange={(e) => setNewInvoice((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Optionele notities voor de factuur"
+                    rows={3}
+                  />
+                </div>
+
+                {/* Acties */}
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                    Annuleren
+                  </Button>
+                  <Button onClick={handleCreateInvoice}>Factuur Aanmaken</Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Statistieken */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Totaal Facturen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Openstaand</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{stats.verzonden}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Betaald</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.betaald}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Totaal Omzet</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">€{stats.paidAmount.toFixed(2)}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Zoek op naam of factuurnummer..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle statussen</SelectItem>
+                  <SelectItem value="concept">Concept</SelectItem>
+                  <SelectItem value="verzonden">Verzonden</SelectItem>
+                  <SelectItem value="betaald">Betaald</SelectItem>
+                  <SelectItem value="vervallen">Vervallen</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Facturen lijst */}
+        <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+          <CardHeader>
+            <CardTitle>Facturen</CardTitle>
+            <CardDescription>
+              {filteredInvoices.length} van {invoices.length} facturen
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {filteredInvoices.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  className="flex items-center justify-between p-4 bg-white/50 rounded-lg border border-white/20"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <div className="font-semibold text-gray-900">{invoice.invoiceNumber}</div>
+                        <div className="text-sm text-gray-600">{invoice.studentName}</div>
+                      </div>
+                      <Badge className={statusColors[invoice.status]}>{statusLabels[invoice.status]}</Badge>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-600">
+                      {format(new Date(invoice.date), "dd MMM yyyy", { locale: nl })} • Vervaldatum:{" "}
+                      {format(new Date(invoice.dueDate), "dd MMM yyyy", { locale: nl })} • €{invoice.total.toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleViewInvoice(invoice)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+
+                    <PDFGenerator invoice={invoice}>
+                      <Button variant="ghost" size="sm">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </PDFGenerator>
+
+                    {invoice.status === "concept" && (
+                      <Button variant="ghost" size="sm" onClick={() => handleSendInvoice(invoice)}>
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    <Select
+                      value={invoice.status}
+                      onValueChange={(value: Invoice["status"]) => handleStatusChange(invoice.id, value)}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="concept">Concept</SelectItem>
+                        <SelectItem value="verzonden">Verzonden</SelectItem>
+                        <SelectItem value="betaald">Betaald</SelectItem>
+                        <SelectItem value="vervallen">Vervallen</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ))}
+
+              {filteredInvoices.length === 0 && (
+                <div className="text-center py-8 text-gray-500">Geen facturen gevonden</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Factuur detail dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            {selectedInvoice && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Factuur {selectedInvoice.invoiceNumber}</DialogTitle>
+                  <DialogDescription>Factuur details voor {selectedInvoice.studentName}</DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6">
+                  {/* Factuur header */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-semibold mb-2">Factuurgegevens</h3>
+                      <div className="space-y-1 text-sm">
+                        <div>Factuurnummer: {selectedInvoice.invoiceNumber}</div>
+                        <div>Datum: {format(new Date(selectedInvoice.date), "dd MMM yyyy", { locale: nl })}</div>
+                        <div>
+                          Vervaldatum: {format(new Date(selectedInvoice.dueDate), "dd MMM yyyy", { locale: nl })}
+                        </div>
+                        <div>
+                          Status:{" "}
+                          <Badge className={statusColors[selectedInvoice.status]}>
+                            {statusLabels[selectedInvoice.status]}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Opmerkingen */}
-              <div className="space-y-2">
-                <Label htmlFor="opmerkingen">Opmerkingen</Label>
-                <Textarea
-                  id="opmerkingen"
-                  value={newFactuur.opmerkingen}
-                  onChange={(e) => setNewFactuur((prev) => ({ ...prev, opmerkingen: e.target.value }))}
-                  placeholder="Eventuele opmerkingen..."
-                />
-              </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">Leerling</h3>
+                      <div className="space-y-1 text-sm">
+                        <div>{selectedInvoice.studentName}</div>
+                        <div>{selectedInvoice.studentEmail}</div>
+                        <div>{selectedInvoice.studentAddress}</div>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Acties */}
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsNewFactuurOpen(false)}>
-                  Annuleren
-                </Button>
-                <Button onClick={createFactuur}>Factuur Aanmaken</Button>
-              </div>
-            </div>
+                  {/* Items */}
+                  <div>
+                    <h3 className="font-semibold mb-4">Items</h3>
+                    <div className="space-y-2">
+                      {selectedInvoice.items.map((item) => (
+                        <div key={item.id} className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <div className="font-medium">{item.description}</div>
+                            <div className="text-sm text-gray-600">
+                              {format(new Date(item.date), "dd MMM yyyy", { locale: nl })}
+                              {item.time && ` om ${item.time}`} • {item.duration} min • €{item.unitPrice}/uur
+                              {item.discount > 0 && ` • Korting: €${item.discount}`}
+                            </div>
+                          </div>
+                          <div className="font-semibold">€{item.total.toFixed(2)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Totalen */}
+                  <div className="border-t pt-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span>Subtotaal:</span>
+                        <span>€{selectedInvoice.subtotal.toFixed(2)}</span>
+                      </div>
+                      {selectedInvoice.discount > 0 && (
+                        <div className="flex justify-between text-red-600">
+                          <span>Korting:</span>
+                          <span>-€{selectedInvoice.discount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>BTW ({selectedInvoice.taxRate}%):</span>
+                        <span>€{selectedInvoice.taxAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-lg border-t pt-2">
+                        <span>Totaal:</span>
+                        <span>€{selectedInvoice.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notities */}
+                  {selectedInvoice.notes && (
+                    <div>
+                      <h3 className="font-semibold mb-2">Notities</h3>
+                      <p className="text-sm text-gray-600">{selectedInvoice.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Acties */}
+                  <div className="flex justify-end space-x-2">
+                    <PDFGenerator invoice={selectedInvoice}>
+                      <Button variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Download PDF
+                      </Button>
+                    </PDFGenerator>
+
+                    {selectedInvoice.status === "concept" && (
+                      <Button onClick={() => handleSendInvoice(selectedInvoice)}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        Verzenden
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totaal Facturen</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{facturen.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Openstaand</CardTitle>
-            <Euro className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              €{" "}
-              {facturen
-                .filter((f) => f.status === "verzonden")
-                .reduce((sum, f) => sum + f.totaal, 0)
-                .toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Betaald</CardTitle>
-            <Euro className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              €{" "}
-              {facturen
-                .filter((f) => f.status === "betaald")
-                .reduce((sum, f) => sum + f.totaal, 0)
-                .toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vervallen</CardTitle>
-            <Euro className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              €{" "}
-              {facturen
-                .filter((f) => f.status === "vervallen")
-                .reduce((sum, f) => sum + f.totaal, 0)
-                .toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Facturen Overzicht</CardTitle>
-          <CardDescription>Beheer alle facturen en betalingen</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Zoek op leerling of factuurnummer..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alle">Alle statussen</SelectItem>
-                <SelectItem value="concept">Concept</SelectItem>
-                <SelectItem value="verzonden">Verzonden</SelectItem>
-                <SelectItem value="betaald">Betaald</SelectItem>
-                <SelectItem value="vervallen">Vervallen</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Facturen tabel */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Factuurnummer</TableHead>
-                <TableHead>Leerling</TableHead>
-                <TableHead>Datum</TableHead>
-                <TableHead>Vervaldatum</TableHead>
-                <TableHead>Bedrag</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Acties</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFacturen.map((factuur) => (
-                <TableRow key={factuur.id}>
-                  <TableCell className="font-medium">{factuur.factuurNummer}</TableCell>
-                  <TableCell>{factuur.leerlingNaam}</TableCell>
-                  <TableCell>{format(new Date(factuur.datum), "dd/MM/yyyy", { locale: nl })}</TableCell>
-                  <TableCell>{format(new Date(factuur.vervaldatum), "dd/MM/yyyy", { locale: nl })}</TableCell>
-                  <TableCell>€ {factuur.totaal.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(factuur.status)}>{getStatusText(factuur.status)}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm" onClick={() => viewFactuur(factuur)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => downloadPDF(factuur)}>
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      {factuur.status === "concept" && (
-                        <Button variant="ghost" size="sm" onClick={() => sendEmail(factuur)}>
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm" onClick={() => deleteFactuur(factuur.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Factuur bekijken dialog */}
-      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Factuur {selectedFactuur?.factuurNummer}</DialogTitle>
-            <DialogDescription>Factuur details en preview</DialogDescription>
-          </DialogHeader>
-
-          {selectedFactuur && (
-            <div className="space-y-6">
-              {/* Factuur header */}
-              <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">{rijschoolSettings.rijschoolNaam}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {rijschoolSettings.plaats}
-                    <br />
-                    {rijschoolSettings.telefoon}
-                    <br />
-                    {rijschoolSettings.email}
-                    <br />
-                    KvK: {rijschoolSettings.kvkNummer}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <h3 className="font-semibold text-lg mb-2">Factuur aan:</h3>
-                  <p className="text-sm">
-                    {selectedFactuur.leerlingNaam}
-                    <br />
-                    {selectedFactuur.leerlingAdres}
-                    <br />
-                    {selectedFactuur.leerlingEmail}
-                  </p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Factuur details */}
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Factuurnummer:</span>
-                  <br />
-                  {selectedFactuur.factuurNummer}
-                </div>
-                <div>
-                  <span className="font-medium">Factuurdatum:</span>
-                  <br />
-                  {format(new Date(selectedFactuur.datum), "dd MMMM yyyy", { locale: nl })}
-                </div>
-                <div>
-                  <span className="font-medium">Vervaldatum:</span>
-                  <br />
-                  {format(new Date(selectedFactuur.vervaldatum), "dd MMMM yyyy", { locale: nl })}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Items */}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Beschrijving</TableHead>
-                    <TableHead>Datum</TableHead>
-                    <TableHead>Tijd</TableHead>
-                    <TableHead>Duur</TableHead>
-                    <TableHead>Prijs/uur</TableHead>
-                    <TableHead>Korting</TableHead>
-                    <TableHead className="text-right">Totaal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedFactuur.items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.beschrijving}</TableCell>
-                      <TableCell>{format(new Date(item.datum), "dd/MM/yyyy", { locale: nl })}</TableCell>
-                      <TableCell>{item.tijd}</TableCell>
-                      <TableCell>{item.duur} min</TableCell>
-                      <TableCell>€ {item.prijsPerUur}</TableCell>
-                      <TableCell>€ {item.korting}</TableCell>
-                      <TableCell className="text-right">€ {item.totaal.toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Totalen */}
-              <div className="space-y-2 text-right">
-                <div className="flex justify-end space-x-4">
-                  <span>Subtotaal:</span>
-                  <span>€ {selectedFactuur.subtotaal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <span>BTW (21%):</span>
-                  <span>€ {selectedFactuur.btw.toFixed(2)}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-end space-x-4 font-bold text-lg">
-                  <span>Totaal:</span>
-                  <span>€ {selectedFactuur.totaal.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {selectedFactuur.opmerkingen && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-2">Opmerkingen:</h4>
-                    <p className="text-sm text-muted-foreground">{selectedFactuur.opmerkingen}</p>
-                  </div>
-                </>
-              )}
-
-              {/* Acties */}
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => downloadPDF(selectedFactuur)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
-                </Button>
-                {selectedFactuur.status === "concept" && (
-                  <Button onClick={() => sendEmail(selectedFactuur)}>
-                    <Mail className="h-4 w-4 mr-2" />
-                    Verstuur Email
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
