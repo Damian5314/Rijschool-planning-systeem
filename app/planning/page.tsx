@@ -15,14 +15,30 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Plus, Clock, User, Car, Filter, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Plus, Clock, User, Car, Filter, Calendar, ChevronLeft, ChevronRight, X, CalendarIcon } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { nl } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 export default function Planning() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedInstructeur, setSelectedInstructeur] = useState("alle")
   const [viewMode, setViewMode] = useState<"dag" | "week">("week")
   const [currentWeek, setCurrentWeek] = useState(0) // 0 = deze week
+
+  // Form state
+  const [selectedDate, setSelectedDate] = useState<Date>()
+  const [selectedVehicles, setSelectedVehicles] = useState<string[]>(["GDD-67-T. Polo Schakel"])
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
+  const [startHour, setStartHour] = useState("09")
+  const [startMinute, setStartMinute] = useState("00")
+  const [endHour, setEndHour] = useState("10")
+  const [endMinute, setEndMinute] = useState("00")
+  const [rememberValues, setRememberValues] = useState(false)
 
   const [afspraken] = useState([
     // Maandag
@@ -157,7 +173,12 @@ export default function Planning() {
     "19:00",
   ]
 
+  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"))
+  const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, "0"))
+
   const instructeurs = ["Jan Bakker", "Lisa de Vries", "Mark Peters"]
+  const leerlingen = ["Emma van der Berg", "Tom Jansen", "Sophie Willems", "David Smit"]
+  const voertuigen = ["GDD-67-T. Polo Schakel", "HLL-97-V. Toyota Yaris Automaat", "ABC-12-D. Opel Corsa Schakel"]
 
   const weekDays = [
     { key: "2024-01-08", label: "Ma 8 Jan" },
@@ -184,6 +205,27 @@ export default function Planning() {
     return `Week ${currentWeek > 0 ? "+" : ""}${currentWeek}`
   }
 
+  const removeVehicle = (vehicle: string) => {
+    setSelectedVehicles((prev) => prev.filter((v) => v !== vehicle))
+  }
+
+  const removeStudent = (student: string) => {
+    setSelectedStudents((prev) => prev.filter((s) => s !== student))
+  }
+
+  const handleSubmit = () => {
+    // Handle form submission here
+    console.log({
+      date: selectedDate,
+      startTime: `${startHour}:${startMinute}`,
+      endTime: `${endHour}:${endMinute}`,
+      students: selectedStudents,
+      vehicles: selectedVehicles,
+      rememberValues,
+    })
+    setIsDialogOpen(false)
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -195,85 +237,303 @@ export default function Planning() {
               Nieuwe Afspraak
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nieuwe Afspraak Inplannen</DialogTitle>
-              <DialogDescription>Plan een nieuwe les of examen in.</DialogDescription>
+              <DialogTitle>Afspraak toevoegen</DialogTitle>
+              <DialogDescription>Plan een nieuwe rijles of examen in.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+
+            <div className="grid gap-6 py-4">
+              {/* Categorie */}
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="type" className="text-right">
-                  Type
+                <Label htmlFor="categorie" className="text-right font-medium">
+                  Categorie
                 </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="les">Rijles</SelectItem>
-                    <SelectItem value="examen">Examen</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="col-span-3">
+                  <Select defaultValue="categorie-b">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="categorie-b">Categorie B</SelectItem>
+                      <SelectItem value="categorie-a">Categorie A</SelectItem>
+                      <SelectItem value="categorie-am">Categorie AM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              {/* Onderdeel */}
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="leerling" className="text-right">
-                  Leerling
+                <Label htmlFor="onderdeel" className="text-right font-medium">
+                  Onderdeel
                 </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer leerling" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="emma">Emma van der Berg</SelectItem>
-                    <SelectItem value="tom">Tom Jansen</SelectItem>
-                    <SelectItem value="sophie">Sophie Willems</SelectItem>
-                    <SelectItem value="david">David Smit</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="col-span-3">
+                  <Select defaultValue="rijles-60">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="rijles-60">B - Rijles (60 minuten)</SelectItem>
+                      <SelectItem value="rijles-90">B - Rijles (90 minuten)</SelectItem>
+                      <SelectItem value="examen">B - Praktijkexamen</SelectItem>
+                      <SelectItem value="theorie">Theorie-examen</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              {/* Datum */}
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="instructeur" className="text-right">
-                  Instructeur
-                </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer instructeur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="jan">Jan Bakker</SelectItem>
-                    <SelectItem value="lisa">Lisa de Vries</SelectItem>
-                    <SelectItem value="mark">Mark Peters</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="datum" className="text-right">
+                <Label htmlFor="datum" className="text-right font-medium">
                   Datum
                 </Label>
-                <Input id="datum" type="date" className="col-span-3" />
+                <div className="col-span-3">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? (
+                          format(selectedDate, "dd-MM-yyyy", { locale: nl })
+                        ) : (
+                          <span>Selecteer datum</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
+
+              {/* Tijd */}
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="tijd" className="text-right">
+                <Label htmlFor="tijd" className="text-right font-medium">
                   Tijd
                 </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer tijd" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeSlots.map((tijd) => (
-                      <SelectItem key={tijd} value={tijd}>
-                        {tijd}
-                      </SelectItem>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Select value={startHour} onValueChange={setStartHour}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hours.map((hour) => (
+                        <SelectItem key={hour} value={hour}>
+                          {hour}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span>:</span>
+                  <Select value={startMinute} onValueChange={setStartMinute}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {minutes
+                        .filter((_, i) => i % 15 === 0)
+                        .map((minute) => (
+                          <SelectItem key={minute} value={minute}>
+                            {minute}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="mx-2">tot</span>
+                  <Select value={endHour} onValueChange={setEndHour}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hours.map((hour) => (
+                        <SelectItem key={hour} value={hour}>
+                          {hour}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span>:</span>
+                  <Select value={endMinute} onValueChange={setEndMinute}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {minutes
+                        .filter((_, i) => i % 15 === 0)
+                        .map((minute) => (
+                          <SelectItem key={minute} value={minute}>
+                            {minute}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Leerling(en) */}
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="leerlingen" className="text-right font-medium pt-2">
+                  Leerling(en)
+                </Label>
+                <div className="col-span-3 space-y-2">
+                  <Select
+                    onValueChange={(value) => {
+                      if (!selectedStudents.includes(value)) {
+                        setSelectedStudents((prev) => [...prev, value])
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer leerling" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leerlingen
+                        .filter((l) => !selectedStudents.includes(l))
+                        .map((leerling) => (
+                          <SelectItem key={leerling} value={leerling}>
+                            {leerling}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStudents.map((student) => (
+                      <Badge key={student} variant="secondary" className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {student}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
+                          onClick={() => removeStudent(student)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Voertuig(en) */}
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="voertuigen" className="text-right font-medium pt-2">
+                  Voertuig(en)
+                </Label>
+                <div className="col-span-3 space-y-2">
+                  <Select
+                    onValueChange={(value) => {
+                      if (!selectedVehicles.includes(value)) {
+                        setSelectedVehicles((prev) => [...prev, value])
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer voertuig" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {voertuigen
+                        .filter((v) => !selectedVehicles.includes(v))
+                        .map((voertuig) => (
+                          <SelectItem key={voertuig} value={voertuig}>
+                            {voertuig}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedVehicles.map((vehicle) => (
+                      <Badge
+                        key={vehicle}
+                        variant="outline"
+                        className="flex items-center gap-1 bg-purple-50 text-purple-700 border-purple-200"
+                      >
+                        <Car className="h-3 w-3" />
+                        {vehicle}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
+                          onClick={() => removeVehicle(vehicle)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notitie aan leerling */}
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="notitie-leerling" className="text-right font-medium pt-2">
+                  Notitie aan leerling
+                </Label>
+                <div className="col-span-3">
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="(Kies snelkeuze)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="thuis-ophalen">Thuis ophalen</SelectItem>
+                      <SelectItem value="school-ophalen">Op school ophalen</SelectItem>
+                      <SelectItem value="rijschool">Naar rijschool komen</SelectItem>
+                      <SelectItem value="custom">Aangepaste notitie...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Textarea className="mt-2" placeholder="Voeg een notitie toe voor de leerling..." rows={3} />
+                </div>
+              </div>
+
+              {/* Interne notitie */}
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="interne-notitie" className="text-right font-medium pt-2">
+                  Interne notitie
+                </Label>
+                <div className="col-span-3">
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="(Kies snelkeuze)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="eerste-les">Eerste les</SelectItem>
+                      <SelectItem value="examen-voorbereiding">Examenvoorbereiding</SelectItem>
+                      <SelectItem value="herhaling">Herhaling vorige les</SelectItem>
+                      <SelectItem value="custom">Aangepaste notitie...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Textarea className="mt-2" placeholder="Interne notitie voor instructeur..." rows={3} />
+                </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button type="submit" onClick={() => setIsDialogOpen(false)}>
-                Afspraak Inplannen
-              </Button>
+
+            <DialogFooter className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox id="remember-values" checked={rememberValues} onCheckedChange={setRememberValues} />
+                <Label htmlFor="remember-values" className="text-sm">
+                  Waarden onthouden
+                </Label>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Annuleren
+                </Button>
+                <Button onClick={handleSubmit} className="bg-purple-600 hover:bg-purple-700">
+                  Toevoegen
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
