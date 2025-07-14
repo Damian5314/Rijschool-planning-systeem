@@ -386,7 +386,7 @@ export default function Instellingen() {
           </CardContent>
         </Card>
 
-        {/* Systeem Instellingen */}
+        {/* Systeem Instellingen  */}
         <Card>
           <CardHeader>
             <div className="flex items-center space-x-2">
