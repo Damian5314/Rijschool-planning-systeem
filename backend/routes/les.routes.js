@@ -1,11 +1,15 @@
-const express = require('express');
-const router = express.Router();
-const lesController = require('../controllers/les.controller');
+const express = require("express")
+const router = express.Router()
+const lesController = require("../controllers/les.controller")
+const { verifyToken } = require("../middleware/authJwt") // Assuming you want to protect these routes
 
-router.get('/lessen', lesController.getLessen);
-router.get('/lessen/:id', lesController.getLesById);
-router.post('/lessen', lesController.createLes);
-router.put('/lessen/:id', lesController.updateLes);
-router.delete('/lessen/:id', lesController.deleteLes);
+// Apply verifyToken middleware to all lesson routes if needed
+// router.use(verifyToken);
 
-module.exports = router;
+router.get("/", lesController.getAllLessen)
+router.get("/:id", lesController.getLesById)
+router.post("/", lesController.createLes)
+router.put("/:id", lesController.updateLes)
+router.delete("/:id", lesController.deleteLes)
+
+module.exports = router

@@ -1,62 +1,57 @@
 "use client"
 
 import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { Car } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 interface AuthGuardProps {
   children: React.ReactNode
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
-    // Check if user is authenticated
-    const checkAuth = () => {
-      try {
-        const isLoggedIn = localStorage.getItem("isLoggedIn") === "true"
-        setIsAuthenticated(isLoggedIn)
+    const token = localStorage.getItem("token")
+    const publicPaths = ["/login", "/register"]
 
-        // If not authenticated and trying to access protected route
-        if (!isLoggedIn && !pathname.startsWith("/login") && !pathname.startsWith("/register")) {
-          router.push("/login")
-        }
-        // If authenticated and trying to access auth pages, redirect to dashboard
-        else if (isLoggedIn && (pathname.startsWith("/login") || pathname.startsWith("/register"))) {
-          router.push("/")
-        }
-      } catch (error) {
-        console.error("Auth check error:", error)
-        setIsAuthenticated(false)
-      } finally {
-        setIsLoading(false)
+    if (token) {
+      // In a real app, you'd validate the token with your backend
+      // For now, we just check for its presence
+      setIsAuthenticated(true)
+      setLoading(false)
+      if (publicPaths.includes(pathname)) {
+        router.push("/") // Redirect logged-in users from login/register pages
+      }
+    } else {
+      setIsAuthenticated(false)
+      setLoading(false)
+      if (!publicPaths.includes(pathname)) {
+        toast({
+          title: "Niet geautoriseerd",
+          description: "U moet inloggen om deze pagina te bekijken.",
+          variant: "destructive",
+        })
+        router.push("/login") // Redirect unauthenticated users to login
       }
     }
+  }, [pathname, router, toast])
 
-    // Small delay to prevent flash
-    const timer = setTimeout(checkAuth, 100)
-    return () => clearTimeout(timer)
-  }, [pathname, router])
-
-  // Show loading while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Car className="h-8 w-8 text-white animate-pulse" />
-          </div>
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Laden...</p>
-        </div>
-      </div>
-    )
+  if (loading) {
+    // You can render a loading spinner or skeleton here
+    return <div className="flex items-center justify-center min-h-screen">Laden...</div>
   }
 
-  return <>{children}</>
+  // Render children only if authenticated or on a public path
+  if (isAuthenticated || ["/login", "/register"].includes(pathname)) {
+    return <>{children}</>
+  }
+
+  return null // Or a message like "Access Denied"
 }

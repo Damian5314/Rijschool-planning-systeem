@@ -10,40 +10,33 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Car, Eye, EyeOff, Lock, Mail, User, Building, Phone, MapPin } from "lucide-react"
+import { Car, Eye, EyeOff, Lock, Mail, User, Building, MapPin } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export default function RegisterPage() {
-  const { toast } = useToast()
-  const router = useRouter()
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [rijschoolNaam, setRijschoolNaam] = useState("")
+  const [kvkNummer, setKvkNummer] = useState("")
+  const [adres, setAdres] = useState("")
+  const [postcode, setPostcode] = useState("")
+  const [plaats, setPlaats] = useState("")
+  const [website, setWebsite] = useState("")
+  const [aantalInstructeurs, setAantalInstructeurs] = useState("")
+  const [aantalVoertuigen, setAantalVoertuigen] = useState("")
+  const [beschrijving, setBeschrijving] = useState("")
 
-  const [registerData, setRegisterData] = useState({
-    // Persoonlijke gegevens
-    voornaam: "",
-    achternaam: "",
-    email: "",
-    telefoon: "",
-    password: "",
-    confirmPassword: "",
-
-    // Rijschool gegevens
-    rijschoolNaam: "",
-    kvkNummer: "",
-    adres: "",
-    postcode: "",
-    plaats: "",
-    website: "",
-    aantalInstructeurs: "",
-    aantalVoertuigen: "",
-    beschrijving: "",
-  })
+  const { toast } = useToast()
+  const router = useRouter()
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,7 +50,7 @@ export default function RegisterPage() {
       return
     }
 
-    if (registerData.password !== registerData.confirmPassword) {
+    if (password !== confirmPassword) {
       toast({
         title: "Wachtwoorden komen niet overeen",
         description: "Controleer je wachtwoord en probeer opnieuw",
@@ -68,15 +61,53 @@ export default function RegisterPage() {
 
     setIsLoading(true)
 
-    // Simuleer registratie proces
-    setTimeout(() => {
-      toast({
-        title: "Account succesvol aangemaakt!",
-        description: "Je kunt nu inloggen met je nieuwe account",
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          rijschoolNaam,
+          kvkNummer,
+          adres,
+          postcode,
+          plaats,
+          website,
+          aantalInstructeurs,
+          aantalVoertuigen,
+          beschrijving,
+        }),
       })
-      router.push("/login")
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Account succesvol aangemaakt!",
+          description: "Je kunt nu inloggen met je nieuwe account",
+        })
+        router.push("/login")
+      } else {
+        toast({
+          title: "Fout",
+          description: data.message || "Registratie mislukt. Probeer het opnieuw.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Registration error:", error)
+      toast({
+        title: "Fout",
+        description: "Er is een netwerkfout opgetreden. Probeer het later opnieuw.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-    }, 2000)
+    }
   }
 
   return (
@@ -111,29 +142,16 @@ export default function RegisterPage() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="voornaam">Voornaam *</Label>
+                    <Label htmlFor="username">Gebruikersnaam *</Label>
                     <Input
-                      id="voornaam"
-                      placeholder="Jan"
-                      value={registerData.voornaam}
-                      onChange={(e) => setRegisterData({ ...registerData, voornaam: e.target.value })}
-                      className="bg-white/50"
+                      id="username"
+                      type="text"
+                      placeholder="gebruikersnaam"
                       required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="achternaam">Achternaam *</Label>
-                    <Input
-                      id="achternaam"
-                      placeholder="Bakker"
-                      value={registerData.achternaam}
-                      onChange={(e) => setRegisterData({ ...registerData, achternaam: e.target.value })}
-                      className="bg-white/50"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="email">Email adres *</Label>
                     <div className="relative">
@@ -142,22 +160,8 @@ export default function RegisterPage() {
                         id="email"
                         type="email"
                         placeholder="jan@rijschool.nl"
-                        value={registerData.email}
-                        onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                        className="pl-10 bg-white/50"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="telefoon">Telefoon *</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="telefoon"
-                        placeholder="06-12345678"
-                        value={registerData.telefoon}
-                        onChange={(e) => setRegisterData({ ...registerData, telefoon: e.target.value })}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="pl-10 bg-white/50"
                         required
                       />
@@ -173,8 +177,8 @@ export default function RegisterPage() {
                         id="password"
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                         className="pl-10 pr-10 bg-white/50"
                         required
                       />
@@ -197,8 +201,8 @@ export default function RegisterPage() {
                         id="confirmPassword"
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        value={registerData.confirmPassword}
-                        onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                         className="pl-10 pr-10 bg-white/50"
                         required
                       />
@@ -228,8 +232,8 @@ export default function RegisterPage() {
                     <Input
                       id="rijschoolNaam"
                       placeholder="Rijschool De Veilige Weg"
-                      value={registerData.rijschoolNaam}
-                      onChange={(e) => setRegisterData({ ...registerData, rijschoolNaam: e.target.value })}
+                      value={rijschoolNaam}
+                      onChange={(e) => setRijschoolNaam(e.target.value)}
                       className="bg-white/50"
                       required
                     />
@@ -239,8 +243,8 @@ export default function RegisterPage() {
                     <Input
                       id="kvkNummer"
                       placeholder="12345678"
-                      value={registerData.kvkNummer}
-                      onChange={(e) => setRegisterData({ ...registerData, kvkNummer: e.target.value })}
+                      value={kvkNummer}
+                      onChange={(e) => setKvkNummer(e.target.value)}
                       className="bg-white/50"
                     />
                   </div>
@@ -252,8 +256,8 @@ export default function RegisterPage() {
                     <Input
                       id="adres"
                       placeholder="Hoofdstraat 123"
-                      value={registerData.adres}
-                      onChange={(e) => setRegisterData({ ...registerData, adres: e.target.value })}
+                      value={adres}
+                      onChange={(e) => setAdres(e.target.value)}
                       className="pl-10 bg-white/50"
                       required
                     />
@@ -265,8 +269,8 @@ export default function RegisterPage() {
                     <Input
                       id="postcode"
                       placeholder="1234 AB"
-                      value={registerData.postcode}
-                      onChange={(e) => setRegisterData({ ...registerData, postcode: e.target.value.toUpperCase() })}
+                      value={postcode}
+                      onChange={(e) => setPostcode(e.target.value.toUpperCase())}
                       className="bg-white/50"
                       required
                     />
@@ -276,8 +280,8 @@ export default function RegisterPage() {
                     <Input
                       id="plaats"
                       placeholder="Amsterdam"
-                      value={registerData.plaats}
-                      onChange={(e) => setRegisterData({ ...registerData, plaats: e.target.value })}
+                      value={plaats}
+                      onChange={(e) => setPlaats(e.target.value)}
                       className="bg-white/50"
                       required
                     />
@@ -288,18 +292,15 @@ export default function RegisterPage() {
                   <Input
                     id="website"
                     placeholder="www.rijschool.nl"
-                    value={registerData.website}
-                    onChange={(e) => setRegisterData({ ...registerData, website: e.target.value })}
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
                     className="bg-white/50"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="aantalInstructeurs">Aantal instructeurs</Label>
-                    <Select
-                      value={registerData.aantalInstructeurs}
-                      onValueChange={(value) => setRegisterData({ ...registerData, aantalInstructeurs: value })}
-                    >
+                    <Select value={aantalInstructeurs} onValueChange={(value) => setAantalInstructeurs(value)}>
                       <SelectTrigger className="bg-white/50">
                         <SelectValue placeholder="Selecteer aantal" />
                       </SelectTrigger>
@@ -313,10 +314,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <Label htmlFor="aantalVoertuigen">Aantal voertuigen</Label>
-                    <Select
-                      value={registerData.aantalVoertuigen}
-                      onValueChange={(value) => setRegisterData({ ...registerData, aantalVoertuigen: value })}
-                    >
+                    <Select value={aantalVoertuigen} onValueChange={(value) => setAantalVoertuigen(value)}>
                       <SelectTrigger className="bg-white/50">
                         <SelectValue placeholder="Selecteer aantal" />
                       </SelectTrigger>
@@ -334,8 +332,8 @@ export default function RegisterPage() {
                   <Textarea
                     id="beschrijving"
                     placeholder="Vertel iets over je rijschool..."
-                    value={registerData.beschrijving}
-                    onChange={(e) => setRegisterData({ ...registerData, beschrijving: e.target.value })}
+                    value={beschrijving}
+                    onChange={(e) => setBeschrijving(e.target.value)}
                     className="bg-white/50"
                     rows={3}
                   />

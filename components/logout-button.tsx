@@ -1,35 +1,26 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 import { LogOut } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/components/ui/use-toast"
 
 export function LogoutButton() {
+  const router = useRouter()
   const { toast } = useToast()
 
   const handleLogout = () => {
-    // Clear authentication
-    localStorage.removeItem("isLoggedIn")
-    localStorage.removeItem("userRole")
-    localStorage.removeItem("userEmail")
-
+    localStorage.removeItem("token") // Remove the stored token
     toast({
       title: "Uitgelogd",
-      description: "Je bent succesvol uitgelogd",
+      description: "U bent succesvol uitgelogd.",
     })
-
-    // Redirect to login
-    window.location.href = "/login"
+    router.push("/login") // Redirect to login page
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={handleLogout}
-      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-    >
-      <LogOut className="h-4 w-4 mr-2" />
+    <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
+      <LogOut className="mr-2 h-4 w-4" />
       Uitloggen
     </Button>
   )

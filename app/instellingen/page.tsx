@@ -1,20 +1,92 @@
 "use client"
 
-import { useState } from "react"
+import { CardDescription } from "@/components/ui/card"
+
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Building, Clock, Bell, Database, Save, Download, Upload } from "lucide-react"
-import { rijschoolSettings } from "@/lib/data"
-import { toast } from "@/hooks/use-toast"
+import { rijschoolSettings as initialRijschoolSettings } from "@/lib/data"
+import { useToast } from "@/components/ui/use-toast"
+
+interface RijschoolSettings {
+  rijschoolNaam: string
+  adres: string
+  postcode: string
+  plaats: string
+  telefoon: string
+  email: string
+  kvkNummer: string
+  lesDuur: number
+  examenDuur: number
+  pauzeMinuten: number
+  openingstijden: {
+    maandag: { gesloten: boolean; open: string; dicht: string }
+    dinsdag: { gesloten: boolean; open: string; dicht: string }
+    woensdag: { gesloten: boolean; open: string; dicht: string }
+    donderdag: { gesloten: boolean; open: string; dicht: string }
+    vrijdag: { gesloten: boolean; open: string; dicht: string }
+    zaterdag: { gesloten: boolean; open: string; dicht: string }
+    zondag: { gesloten: boolean; open: string; dicht: string }
+  }
+  website: string
+  emailNotificaties: boolean
+  smsNotificaties: boolean
+  herinneringVoorExamen: number
+  herinneringVoorLes: number
+  automatischeBackup: boolean
+  backupTijd: string
+  dataRetentie: number
+  prijsAutomaat: number
+  prijsSchakel: number
+  prijsExamen: number
+  name: string
+  address: string
+  zipCode: string
+  city: string
+  phone: string
+  kvk: string
+  btw: string
+  bankAccount: string
+  iban: string
+  logoUrl: string
+}
 
 export default function Instellingen() {
-  const [settings, setSettings] = useState(rijschoolSettings)
+  const { toast } = useToast()
+  const [settings, setSettings] = useState<RijschoolSettings>(initialRijschoolSettings)
+
+  useEffect(() => {
+    // In a real application, you would fetch these settings from a backend
+    // For now, we use the initial settings from lib/data.ts
+    setSettings(initialRijschoolSettings)
+  }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target
+    setSettings((prevSettings) => ({
+      ...prevSettings,
+      [id]: value,
+    }))
+  }
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    // In a real application, you would send these settings to a backend API
+    console.log("Saving settings:", settings)
+    toast({
+      title: "Instellingen Opgeslagen",
+      description: "De rijschoolinstellingen zijn succesvol bijgewerkt.",
+    })
+  }
 
   const handleSave = () => {
     toast({
@@ -82,81 +154,68 @@ export default function Instellingen() {
             <CardDescription>Algemene informatie over {settings.rijschoolNaam}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="rijschoolNaam">Rijschool Naam</Label>
+            <form onSubmit={handleSubmit} className="grid gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Naam Rijschool</Label>
+                  <Input id="name" value={settings.name} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="email">E-mailadres</Label>
+                  <Input id="email" type="email" value={settings.email} onChange={handleChange} required />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="phone">Telefoonnummer</Label>
+                  <Input id="phone" type="tel" value={settings.phone} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="address">Adres</Label>
+                  <Input id="address" value={settings.address} onChange={handleChange} required />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="zipCode">Postcode</Label>
+                  <Input id="zipCode" value={settings.zipCode} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="city">Plaats</Label>
+                  <Input id="city" value={settings.city} onChange={handleChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="kvk">KVK Nummer</Label>
+                  <Input id="kvk" value={settings.kvk} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="btw">BTW Nummer</Label>
+                  <Input id="btw" value={settings.btw} onChange={handleChange} />
+                </div>
+                <div>
+                  <Label htmlFor="bankAccount">Bankrekeninghouder</Label>
+                  <Input id="bankAccount" value={settings.bankAccount} onChange={handleChange} />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="iban">IBAN</Label>
+                <Input id="iban" value={settings.iban} onChange={handleChange} required />
+              </div>
+              <div>
+                <Label htmlFor="logoUrl">Logo URL</Label>
                 <Input
-                  id="rijschoolNaam"
-                  value={settings.rijschoolNaam}
-                  onChange={(e) => setSettings({ ...settings, rijschoolNaam: e.target.value })}
+                  id="logoUrl"
+                  value={settings.logoUrl}
+                  onChange={handleChange}
+                  placeholder="URL naar rijschool logo"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="kvkNummer">KvK Nummer</Label>
-                <Input
-                  id="kvkNummer"
-                  value={settings.kvkNummer}
-                  onChange={(e) => setSettings({ ...settings, kvkNummer: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="adres">Adres</Label>
-              <Input
-                id="adres"
-                value={settings.adres}
-                onChange={(e) => setSettings({ ...settings, adres: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="postcode">Postcode</Label>
-                <Input
-                  id="postcode"
-                  value={settings.postcode}
-                  onChange={(e) => setSettings({ ...settings, postcode: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="plaats">Plaats</Label>
-                <Input
-                  id="plaats"
-                  value={settings.plaats}
-                  onChange={(e) => setSettings({ ...settings, plaats: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="telefoon">Telefoon</Label>
-                <Input
-                  id="telefoon"
-                  value={settings.telefoon}
-                  onChange={(e) => setSettings({ ...settings, telefoon: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={settings.email}
-                  onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                value={settings.website}
-                onChange={(e) => setSettings({ ...settings, website: e.target.value })}
-              />
-            </div>
+              <Button type="submit" className="w-fit">
+                Instellingen Opslaan
+              </Button>
+            </form>
           </CardContent>
         </Card>
 

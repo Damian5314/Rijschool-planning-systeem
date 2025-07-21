@@ -187,159 +187,7 @@ export const rijschoolSettings: RijschoolSettings = {
   prijsExamen: 220,
 }
 
-// Mock data voor studenten
-export const mockStudents: Student[] = [
-  {
-    id: "1",
-    name: "Emma van der Berg",
-    email: "emma.vandenberg@email.com",
-    phone: "06-12345678",
-    address: "Hoofdstraat 123, 1234 AB Amsterdam",
-    dateOfBirth: "2005-03-15",
-    licenseType: "B",
-    startDate: "2024-01-15",
-    instructor: "Jan Jansen",
-    lessonCount: 25,
-    theoryPassed: true,
-    practicalExamDate: "2024-03-20",
-    status: "active",
-    progress: 75,
-    nextLesson: "2024-02-20T10:00",
-  },
-  {
-    id: "2",
-    name: "Lucas de Vries",
-    email: "lucas.devries@email.com",
-    phone: "06-87654321",
-    address: "Kerkstraat 45, 5678 CD Utrecht",
-    dateOfBirth: "2004-07-22",
-    licenseType: "B",
-    startDate: "2024-02-01",
-    instructor: "Marie Bakker",
-    lessonCount: 18,
-    theoryPassed: true,
-    status: "active",
-    progress: 60,
-    nextLesson: "2024-02-21T14:00",
-  },
-  {
-    id: "3",
-    name: "Sophie Janssen",
-    email: "sophie.janssen@email.com",
-    phone: "06-11223344",
-    address: "Dorpsplein 67, 9012 EF Rotterdam",
-    dateOfBirth: "2005-11-08",
-    licenseType: "B",
-    startDate: "2023-11-10",
-    instructor: "Jan Jansen",
-    lessonCount: 42,
-    theoryPassed: true,
-    status: "passed",
-    progress: 100,
-  },
-  {
-    id: "4",
-    name: "Damian Willemse",
-    email: "boma5314@gmail.com",
-    phone: "06-11223344",
-    address: "Dorpsplein 67, 9012 EF Rotterdam",
-    dateOfBirth: "2005-11-08",
-    licenseType: "B",
-    startDate: "2023-11-10",
-    instructor: "Jan Jansen",
-    lessonCount: 42,
-    theoryPassed: true,
-    status: "passed",
-    progress: 100,
-  },
-]
-
-// Mock data voor instructeurs
-export const mockInstructors: Instructor[] = [
-  {
-    id: "1",
-    name: "Jan Jansen",
-    email: "jan.jansen@rijschool.nl",
-    phone: "06-11111111",
-    specialization: ["B", "BE"],
-    experience: 15,
-    rating: 4.8,
-    availability: ["ma", "di", "wo", "do", "vr"],
-    students: 25,
-  },
-  {
-    id: "2",
-    name: "Marie Bakker",
-    email: "marie.bakker@rijschool.nl",
-    phone: "06-22222222",
-    specialization: ["B", "A"],
-    experience: 8,
-    rating: 4.9,
-    availability: ["di", "wo", "do", "vr", "za"],
-    students: 18,
-  },
-  {
-    id: "3",
-    name: "Piet de Jong",
-    email: "piet.dejong@rijschool.nl",
-    phone: "06-33333333",
-    specialization: ["B"],
-    experience: 12,
-    rating: 4.7,
-    availability: ["ma", "wo", "vr"],
-    students: 22,
-  },
-]
-
-// Mock data voor voertuigen
-export const mockVehicles: Vehicle[] = [
-  {
-    id: "1",
-    brand: "Volkswagen",
-    model: "Golf",
-    year: 2022,
-    licensePlate: "1-ABC-23",
-    type: "manual",
-    fuelType: "benzine",
-    mileage: 45000,
-    lastMaintenance: "2024-01-15",
-    nextMaintenance: "2024-04-15",
-    keuringDate: "2024-12-01",
-    status: "beschikbaar",
-    instructor: "Jan Jansen",
-  },
-  {
-    id: "2",
-    brand: "Toyota",
-    model: "Yaris",
-    year: 2023,
-    licensePlate: "2-DEF-45",
-    type: "automatic",
-    fuelType: "hybride",
-    mileage: 28000,
-    lastMaintenance: "2024-02-01",
-    nextMaintenance: "2024-05-01",
-    keuringDate: "2025-01-15",
-    status: "beschikbaar",
-    instructor: "Marie Bakker",
-  },
-  {
-    id: "3",
-    brand: "Opel",
-    model: "Corsa",
-    year: 2021,
-    licensePlate: "3-GHI-67",
-    type: "manual",
-    fuelType: "benzine",
-    mileage: 62000,
-    lastMaintenance: "2024-01-20",
-    nextMaintenance: "2024-04-20",
-    keuringDate: "2024-11-10",
-    status: "onderhoud",
-  },
-]
-
-// Mock data voor facturen
+// Mock data voor facturen (blijft voor nu, omdat er geen backend voor is)
 export const mockInvoices: Invoice[] = [
   {
     id: "1",
@@ -421,20 +269,26 @@ export const mockInvoices: Invoice[] = [
 ]
 
 // Utility functies
+// Deze functies zijn nu afhankelijk van de backend, dus ze moeten worden aangepast of verwijderd als ze niet meer nodig zijn.
+// Voor nu laat ik ze staan, maar ze zullen geen mock data meer gebruiken.
 export const getStudentById = (id: string): Student | undefined => {
-  return mockStudents.find((student) => student.id === id)
+  // Deze functie moet nu een API call maken
+  return undefined // Of een fetch implementeren
 }
 
 export const getInstructorById = (id: string): Instructor | undefined => {
-  return mockInstructors.find((instructor) => instructor.id === id)
+  // Deze functie moet nu een API call maken
+  return undefined // Of een fetch implementeren
 }
 
 export const getVehicleById = (id: string): Vehicle | undefined => {
-  return mockVehicles.find((vehicle) => vehicle.id === id)
+  // Deze functie moet nu een API call maken
+  return undefined // Of een fetch implementeren
 }
 
 export const getInvoiceById = (id: string): Invoice | undefined => {
-  return mockInvoices.find((invoice) => invoice.id === id)
+  // Deze functie moet nu een API call maken
+  return mockInvoices.find((invoice) => invoice.id === id) // Blijft mockdata voor facturen
 }
 
 export const generateInvoiceNumber = (): string => {
@@ -458,34 +312,8 @@ export const calculateInvoiceTotals = (items: InvoiceItem[], taxRate = 21) => {
   }
 }
 
-// Legacy data voor backward compatibility
-export const leerlingenData = mockStudents.map((student) => ({
-  id: Number.parseInt(student.id),
-  naam: student.name,
-  telefoon: student.phone,
-  email: student.email,
-  adres: student.address.split(",")[0],
-  postcode: student.address.split(",")[1]?.split(" ")[1] + " " + student.address.split(",")[1]?.split(" ")[2] || "",
-  plaats: student.address.split(",")[1]?.split(" ").slice(3).join(" ") || "",
-  transmissie: student.licenseType === "B" ? "Automaat" : "Handgeschakeld",
-  status: student.status === "active" ? "Actief" : student.status === "passed" ? "Geslaagd" : "Nieuw",
-  instructeur: student.instructor,
-  datumLeerlingnummer: student.id.padStart(3, "0"),
-  debiteurNummer: (Number.parseInt(student.id) + 9).toString(),
-  leerlingSinds: new Date(student.startDate).toLocaleDateString("nl-NL"),
-  tegoed: Math.floor(Math.random() * 300),
-  chatViaWhatsApp: Math.random() > 0.5,
-  lesGeschiedenis: [],
-  examens: [],
-  financieel: {
-    totaalBetaald: Math.floor(Math.random() * 1500) + 500,
-    laatsteBetaling: {
-      datum: new Date().toLocaleDateString("nl-NL"),
-      bedrag: Math.floor(Math.random() * 300) + 100,
-    },
-  },
-}))
-
+// Legacy data voor backward compatibility - deze wordt nu verwijderd
+export const leerlingenData: any[] = [] // Leeg array, data komt van backend
 export const facturenData = mockInvoices.map((invoice) => ({
   id: Number.parseInt(invoice.id),
   factuurNummer: invoice.invoiceNumber,
