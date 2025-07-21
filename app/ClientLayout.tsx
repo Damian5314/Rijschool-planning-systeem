@@ -2,21 +2,21 @@
 
 import type React from "react"
 
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthGuard } from "@/components/auth-guard"
+import { SidebarProvider } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/sidebar"
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
+export default function ClientLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <AuthGuard>
-      <SidebarProvider>
-        <div className="flex min-h-screen">
-          <AppSidebar />
-          <main className="flex-1 flex flex-col">{children}</main>
-        </div>
-      </SidebarProvider>
+    <SidebarProvider>
+      <AppSidebar />
+      <AuthGuard>{children}</AuthGuard>
       <Toaster />
-    </AuthGuard>
+    </SidebarProvider>
   )
 }

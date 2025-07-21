@@ -2,96 +2,82 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
-import { PlusCircle, Edit, Trash2, Search, X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import Loading from "@/components/ui/loading" // Declare the Loading component
-
-interface Instructor {
-  _id: string
-  naam: string
-  email: string
-  telefoon?: string
-  rijbewijsType: string[] // Bijv. ['B', 'A', 'C']
-  status: "Actief" | "Inactief"
-  specialisatieDisplay?: string // Voor frontend weergave
-}
+import { toast } from "@/components/ui/use-toast"
+import type { Instructor } from "@/lib/data"
 
 export default function InstructeursPage() {
-  const { toast } = useToast()
-  const [instructeurs, setInstructeurs] = useState<Instructor[]>([])
+  const [instructors, setInstructors] = useState<Instructor[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [currentInstructeur, setCurrentInstructeur] = useState<Instructor | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchInstructeurs = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/instructeurs`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch instructors")
-      }
-      const data: Instructor[] = await response.json()
-      // Voeg een display-veld toe voor specialisaties
-      const formattedData = data.map((inst) => ({
-        ...inst,
-        specialisatieDisplay: inst.rijbewijsType.join(", ") || "N.v.t.",
-        // Mock telefoon en status als ze niet van de backend komen
-        telefoon: inst.telefoon || "N.v.t.",
-        status: inst.status || "Actief",
-      }))
-      setInstructeurs(formattedData)
-    } catch (err) {
-      console.error("Error fetching instructors:", err)
-      setError("Kon instructeurs niet laden. Probeer het later opnieuw.")
-      toast({
-        title: "Fout",
-        description: "Kon instructeurs niet laden.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
+  const [currentInstructor, setCurrentInstructor] = useState<Instructor | null>(null)
 
   useEffect(() => {
-    fetchInstructeurs()
-  }, [fetchInstructeurs])
+    fetchInstructors()
+  }, [])
 
-  const handleAddInstructeur = () => {
-    setCurrentInstructeur(null)
-    setIsDialogOpen(true)
-  }
-
-  const handleEditInstructeur = (instructeur: Instructor) => {
-    setCurrentInstructeur(instructeur)
-    setIsDialogOpen(true)
-  }
-
-  const handleDeleteInstructeur = async (id: string) => {
+  const fetchInstructors = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/instructeurs/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setInstructors(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          specialization: item.rijbewijsType,
+          experience: 0, // Not in model, default to 0
+          rating: 0, // Not in model, default to 0
+          availability: [], // Not in model, default to empty
+          students: 0, // Not in model, default to 0
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van instructeurs:", error)
+      toast({
+        title: "Fout",
+        description: "Kon instructeurs niet ophalen.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleAddInstructor = () => {
+    setCurrentInstructor(null)
+    setIsDialogOpen(true)
+  }
+
+  const handleEditInstructor = (instructor: Instructor) => {
+    setCurrentInstructor(instructor)
+    setIsDialogOpen(true)
+  }
+
+  const handleDeleteInstructor = async (id: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs/${id}`, {
         method: "DELETE",
       })
       if (!response.ok) {
-        throw new Error("Failed to delete instructor")
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      setInstructeurs(instructeurs.filter((inst) => inst._id !== id))
+      setInstructors(instructors.filter((instructor) => instructor.id !== id))
       toast({
-        title: "Instructeur Verwijderd",
-        description: "Instructeur is succesvol verwijderd.",
+        title: "Instructeur verwijderd",
+        description: `Instructeur is succesvol verwijderd.`,
       })
-    } catch (err) {
-      console.error("Error deleting instructor:", err)
+    } catch (error) {
+      console.error("Fout bij het verwijderen van instructeur:", error)
       toast({
         title: "Fout",
         description: "Kon instructeur niet verwijderen.",
@@ -100,175 +86,125 @@ export default function InstructeursPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const naam = formData.get("naam") as string
-    const email = formData.get("email") as string
-    const telefoon = formData.get("telefoon") as string
-    const rijbewijsType = (formData.getAll("rijbewijsType") as string[]) || []
-    const status = formData.get("status") as "Actief" | "Inactief"
-
+    const formData = new FormData(e.target as HTMLFormElement)
     const instructorData = {
-      naam,
-      email,
-      telefoon,
-      rijbewijsType,
-      status,
+      naam: formData.get("name") as string,
+      email: formData.get("email") as string,
+      telefoon: formData.get("phone") as string,
+      rijbewijsType: formData.getAll("specialization") as string[], // Assuming multi-select or comma-separated
     }
 
     try {
       let response
-      if (currentInstructeur) {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/instructeurs/${currentInstructeur._id}`, {
+      if (currentInstructor) {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs/${currentInstructor.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(instructorData),
         })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Instructeur bijgewerkt",
+          description: `Instructeur ${instructorData.naam} is succesvol bijgewerkt.`,
+        })
       } else {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/instructeurs`, {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(instructorData),
         })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Instructeur toegevoegd",
+          description: `Nieuwe instructeur ${instructorData.naam} is succesvol toegevoegd.`,
+        })
       }
-
-      if (!response.ok) {
-        throw new Error("Failed to save instructor")
-      }
-
-      await fetchInstructeurs() // Refresh the list
       setIsDialogOpen(false)
-      toast({
-        title: "Succes",
-        description: `Instructeur succesvol ${currentInstructeur ? "bijgewerkt" : "toegevoegd"}.`,
-      })
-    } catch (err) {
-      console.error("Error saving instructor:", err)
+      fetchInstructors() // Refresh the list
+    } catch (error) {
+      console.error("Fout bij opslaan instructeur:", error)
       toast({
         title: "Fout",
-        description: `Kon instructeur niet ${currentInstructeur ? "bijwerken" : "toevoegen"}.`,
+        description: "Kon instructeur niet opslaan.",
         variant: "destructive",
       })
     }
   }
 
-  const filteredInstructeurs = instructeurs.filter(
-    (instructeur) =>
-      instructeur.naam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      instructeur.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (instructeur.telefoon && instructeur.telefoon.includes(searchTerm)) ||
-      instructeur.specialisatieDisplay?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  if (loading) {
-    return <Loading />
-  }
-
-  if (error) {
-    return <div className="p-4 md:p-6 text-red-500">{error}</div>
-  }
-
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Instructeurs</h1>
-        <Button onClick={handleAddInstructeur}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Instructeur Toevoegen
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Instructeurs</h1>
+        <Button className="ml-auto" onClick={handleAddInstructor}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Nieuwe Instructeur
         </Button>
       </div>
-
-      <div className="relative mb-4">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Zoek op naam, e-mail of specialisatie..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-8 pr-8"
-        />
-        {searchTerm && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:bg-transparent"
-            onClick={() => setSearchTerm("")}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      <div className="overflow-x-auto border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Naam</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Telefoon</TableHead>
-              <TableHead>Rijbewijs Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Acties</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredInstructeurs.length === 0 ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>Overzicht Instructeurs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  Geen instructeurs gevonden.
-                </TableCell>
+                <TableHead>Naam</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead>Telefoon</TableHead>
+                <TableHead>Specialisatie</TableHead>
+                <TableHead className="text-right">Acties</TableHead>
               </TableRow>
-            ) : (
-              filteredInstructeurs.map((instructeur) => (
-                <TableRow key={instructeur._id}>
-                  <TableCell className="font-medium">{instructeur.naam}</TableCell>
-                  <TableCell>{instructeur.email}</TableCell>
-                  <TableCell>{instructeur.telefoon}</TableCell>
-                  <TableCell>{instructeur.specialisatieDisplay}</TableCell>
-                  <TableCell>{instructeur.status}</TableCell>
+            </TableHeader>
+            <TableBody>
+              {instructors.map((instructor) => (
+                <TableRow key={instructor.id}>
+                  <TableCell>{instructor.name}</TableCell>
+                  <TableCell>{instructor.email}</TableCell>
+                  <TableCell>{instructor.phone}</TableCell>
+                  <TableCell>{instructor.specialization.join(", ")}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="icon" onClick={() => handleEditInstructeur(instructeur)}>
-                        <Edit className="h-4 w-4" />
-                        <span className="sr-only">Bewerk instructeur</span>
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleDeleteInstructeur(instructeur._id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Verwijder instructeur</span>
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditInstructor(instructor)}
+                      className="mr-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Bewerken</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteInstructor(instructor.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Verwijderen</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{currentInstructeur ? "Instructeur Bewerken" : "Nieuwe Instructeur Toevoegen"}</DialogTitle>
+            <DialogTitle>{currentInstructor ? "Instructeur Bewerken" : "Nieuwe Instructeur Toevoegen"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="naam" className="text-right">
+              <Label htmlFor="name" className="text-right">
                 Naam
               </Label>
-              <Input
-                id="naam"
-                name="naam"
-                defaultValue={currentInstructeur?.naam || ""}
-                className="col-span-3"
-                required
-              />
+              <Input id="name" name="name" defaultValue={currentInstructor?.name} className="col-span-3" required />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
@@ -278,60 +214,40 @@ export default function InstructeursPage() {
                 id="email"
                 name="email"
                 type="email"
-                defaultValue={currentInstructeur?.email || ""}
+                defaultValue={currentInstructor?.email}
                 className="col-span-3"
                 required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="telefoon" className="text-right">
+              <Label htmlFor="phone" className="text-right">
                 Telefoon
               </Label>
-              <Input
-                id="telefoon"
-                name="telefoon"
-                type="tel"
-                defaultValue={currentInstructeur?.telefoon || ""}
-                className="col-span-3"
-              />
+              <Input id="phone" name="phone" defaultValue={currentInstructor?.phone} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="rijbewijsType" className="text-right">
+              <Label htmlFor="specialization" className="text-right">
                 Rijbewijs Type
               </Label>
               <Select
-                name="rijbewijsType"
-                defaultValue={currentInstructeur?.rijbewijsType[0] || ""} // Selecteer de eerste, of pas aan voor multi-select
+                name="specialization"
+                defaultValue={currentInstructor?.specialization[0]} // Assuming single select for simplicity in form
                 required
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecteer type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="B">B (Auto)</SelectItem>
+                  <SelectItem value="B">B (Personenauto)</SelectItem>
                   <SelectItem value="A">A (Motor)</SelectItem>
                   <SelectItem value="C">C (Vrachtwagen)</SelectItem>
                   <SelectItem value="D">D (Bus)</SelectItem>
-                  <SelectItem value="E">E (Aanhanger)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Status
-              </Label>
-              <Select name="status" defaultValue={currentInstructeur?.status || "Actief"} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Actief">Actief</SelectItem>
-                  <SelectItem value="Inactief">Inactief</SelectItem>
+                  <SelectItem value="E">E (Aanhangwagen)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <DialogFooter>
-              <Button type="submit">{currentInstructeur ? "Opslaan" : "Toevoegen"}</Button>
+              <Button type="submit">{currentInstructor ? "Opslaan" : "Toevoegen"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

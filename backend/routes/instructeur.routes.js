@@ -1,15 +1,13 @@
 const express = require("express")
 const router = express.Router()
 const instructeurController = require("../controllers/instructeur.controller")
-const { verifyToken } = require("../middleware/authJwt") // Assuming you want to protect these routes
+const { verifyToken, isAdmin } = require("../middleware/authJwt")
 
-// Apply verifyToken middleware to all instructor routes if needed
-// router.use(verifyToken);
-
-router.get("/", instructeurController.getAllInstructeurs)
-router.get("/:id", instructeurController.getInstructeurById)
-router.post("/", instructeurController.createInstructeur)
-router.put("/:id", instructeurController.updateInstructeur)
-router.delete("/:id", instructeurController.deleteInstructeur)
+// Apply verifyToken to all routes, isAdmin to specific ones
+router.get("/", [verifyToken], instructeurController.getAllInstructeurs)
+router.get("/:id", [verifyToken], instructeurController.getInstructeurById)
+router.post("/", [verifyToken, isAdmin], instructeurController.createInstructeur)
+router.put("/:id", [verifyToken, isAdmin], instructeurController.updateInstructeur)
+router.delete("/:id", [verifyToken, isAdmin], instructeurController.deleteInstructeur)
 
 module.exports = router

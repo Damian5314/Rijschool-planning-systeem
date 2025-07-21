@@ -2,112 +2,133 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { PlusCircle, Edit, Trash2, Search, X } from "lucide-react"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2, Eye } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import { Badge } from "@/components/ui/badge"
-import Loading from "./loading"
-
-interface Student {
-  _id: string
-  naam: string
-  email: string
-  telefoon?: string
-  rijbewijsType?: string
-  status?: "Actief" | "Inactief" | "Gepauzeerd" | "Afgestudeerd"
-  instructeur?: string // ID van instructeur
-  instructeurNaam?: string // Voor frontend weergave
-}
-
-interface Instructor {
-  _id: string
-  naam: string
-}
+import { toast } from "@/components/ui/use-toast"
+import type { Student, Instructor } from "@/lib/data" // Assuming Instructor interface is also here
 
 export default function LeerlingenPage() {
-  const { toast } = useToast()
-  const [leerlingen, setLeerlingen] = useState<Student[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [currentLeerling, setCurrentLeerling] = useState<Student | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [students, setStudents] = useState<Student[]>([])
   const [instructors, setInstructors] = useState<Instructor[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchLeerlingen = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/studenten`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch students")
-      }
-      const data: Student[] = await response.json()
-
-      // Fetch instructors to map instructor IDs to names
-      const instructorsResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/instructeurs`)
-      const instructorsData: Instructor[] = instructorsResponse.ok ? await instructorsResponse.json() : []
-      setInstructors(instructorsData)
-
-      const formattedData = data.map((student) => ({
-        ...student,
-        rijbewijsType: student.rijbewijsType || "B", // Mock if not present
-        status: student.status || "Actief", // Mock if not present
-        telefoon: student.telefoon || "N.v.t.", // Mock if not present
-        instructeurNaam: student.instructeur
-          ? instructorsData.find((inst) => inst._id === student.instructeur)?.naam || "Onbekend"
-          : "N.v.t.",
-      }))
-      setLeerlingen(formattedData)
-    } catch (err) {
-      console.error("Error fetching students:", err)
-      setError("Kon leerlingen niet laden. Probeer het later opnieuw.")
-      toast({
-        title: "Fout",
-        description: "Kon leerlingen niet laden.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [currentStudent, setCurrentStudent] = useState<Student | null>(null)
 
   useEffect(() => {
-    fetchLeerlingen()
-  }, [fetchLeerlingen])
+    fetchStudents()
+    fetchInstructors()
+  }, [])
 
-  const handleAddLeerling = () => {
-    setCurrentLeerling(null)
-    setIsDialogOpen(true)
-  }
-
-  const handleEditLeerling = (leerling: Student) => {
-    setCurrentLeerling(leerling)
-    setIsDialogOpen(true)
-  }
-
-  const handleDeleteLeerling = async (id: string) => {
+  const fetchStudents = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/studenten/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setStudents(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          address: item.adres,
+          dateOfBirth: item.geboortedatum ? new Date(item.geboortedatum).toISOString().split("T")[0] : "",
+          licenseType: item.rijbewijsType,
+          startDate: new Date(item.datumAangemaakt).toISOString().split("T")[0],
+          instructor: item.instructeur, // This will be the instructor ID
+          lessonCount: item.lesGeschiedenis.length,
+          theoryPassed: item.examens.some((exam: any) => exam.type === "Theorie" && exam.resultaat === "Geslaagd"),
+          practicalExamDate: item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")
+            ?.datum
+            ? new Date(
+                item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")?.datum,
+              )
+                .toISOString()
+                .split("T")[0]
+            : undefined,
+          status: item.status,
+          progress: (item.lesGeschiedenis.length / 40) * 100, // Example progress calculation
+          nextLesson: "N.v.t.", // Placeholder, needs actual lesson fetching
+          avatar: "/placeholder-user.jpg", // Placeholder
+          postcode: item.postcode,
+          plaats: item.plaats,
+          transmissie: item.transmissie,
+          financieel: item.financieel,
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van leerlingen:", error)
+      toast({
+        title: "Fout",
+        description: "Kon leerlingen niet ophalen.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const fetchInstructors = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setInstructors(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          specialization: item.rijbewijsType,
+          experience: 0,
+          rating: 0,
+          availability: [],
+          students: 0,
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van instructeurs:", error)
+      toast({
+        title: "Fout",
+        description: "Kon instructeurs niet ophalen.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleAddStudent = () => {
+    setCurrentStudent(null)
+    setIsDialogOpen(true)
+  }
+
+  const handleEditStudent = (student: Student) => {
+    setCurrentStudent(student)
+    setIsDialogOpen(true)
+  }
+
+  const handleDeleteStudent = async (id: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/${id}`, {
         method: "DELETE",
       })
       if (!response.ok) {
-        throw new Error("Failed to delete student")
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      setLeerlingen(leerlingen.filter((leerling) => leerling._id !== id))
+      setStudents(students.filter((student) => student.id !== id))
       toast({
-        title: "Leerling Verwijderd",
-        description: "Leerling is succesvol verwijderd.",
+        title: "Leerling verwijderd",
+        description: `Leerling is succesvol verwijderd.`,
       })
-    } catch (err) {
-      console.error("Error deleting student:", err)
+    } catch (error) {
+      console.error("Fout bij het verwijderen van leerling:", error)
       toast({
         title: "Fout",
         description: "Kon leerling niet verwijderen.",
@@ -116,190 +137,154 @@ export default function LeerlingenPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const naam = formData.get("naam") as string
-    const email = formData.get("email") as string
-    const telefoon = formData.get("telefoon") as string
-    const rijbewijsType = formData.get("rijbewijsType") as string
-    const status = formData.get("status") as "Actief" | "Inactief" | "Gepauzeerd" | "Afgestudeerd"
-    const instructeur = formData.get("instructeur") as string
-
+    const formData = new FormData(e.target as HTMLFormElement)
     const studentData = {
-      naam,
-      email,
-      telefoon,
-      rijbewijsType,
-      status,
-      instructeur: instructeur === "N.v.t." ? undefined : instructeur, // Send undefined if 'N.v.t.'
+      naam: formData.get("name") as string,
+      email: formData.get("email") as string,
+      telefoon: formData.get("phone") as string,
+      adres: formData.get("address") as string,
+      postcode: formData.get("postcode") as string,
+      plaats: formData.get("plaats") as string,
+      geboortedatum: formData.get("dateOfBirth")
+        ? new Date(formData.get("dateOfBirth") as string).toISOString()
+        : undefined,
+      rijbewijsType: formData.get("licenseType") as string,
+      transmissie: formData.get("transmission") as string,
+      status: formData.get("status") as string,
+      instructeur: formData.get("instructor") as string,
     }
 
     try {
       let response
-      if (currentLeerling) {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/studenten/${currentLeerling._id}`, {
+      if (currentStudent) {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/${currentStudent.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(studentData),
         })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Leerling bijgewerkt",
+          description: `Leerling ${studentData.naam} is succesvol bijgewerkt.`,
+        })
       } else {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/studenten`, {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(studentData),
         })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Leerling toegevoegd",
+          description: `Nieuwe leerling ${studentData.naam} is succesvol toegevoegd.`,
+        })
       }
-
-      if (!response.ok) {
-        throw new Error("Failed to save student")
-      }
-
-      await fetchLeerlingen() // Refresh the list
       setIsDialogOpen(false)
-      toast({
-        title: "Succes",
-        description: `Leerling succesvol ${currentLeerling ? "bijgewerkt" : "toegevoegd"}.`,
-      })
-    } catch (err) {
-      console.error("Error saving student:", err)
+      fetchStudents() // Refresh the list
+    } catch (error) {
+      console.error("Fout bij opslaan leerling:", error)
       toast({
         title: "Fout",
-        description: `Kon leerling niet ${currentLeerling ? "bijwerken" : "toevoegen"}.`,
+        description: "Kon leerling niet opslaan.",
         variant: "destructive",
       })
     }
   }
 
-  const filteredLeerlingen = leerlingen.filter(
-    (leerling) =>
-      leerling.naam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leerling.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (leerling.telefoon && leerling.telefoon.includes(searchTerm)) ||
-      (leerling.instructeurNaam && leerling.instructeurNaam.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
-
-  const getStatusBadgeVariant = (status: Student["status"]) => {
-    switch (status) {
-      case "Actief":
-        return "default"
-      case "Inactief":
-        return "destructive"
-      case "Gepauzeerd":
-        return "secondary"
-      case "Afgestudeerd":
-        return "outline"
-      default:
-        return "outline"
-    }
-  }
-
-  if (loading) {
-    return <Loading />
-  }
-
-  if (error) {
-    return <div className="p-4 md:p-6 text-red-500">{error}</div>
+  const getInstructorName = (instructorId: string) => {
+    const instructor = instructors.find((inst) => inst.id === instructorId)
+    return instructor ? instructor.name : "N.v.t."
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Leerlingen</h1>
-        <Button onClick={handleAddLeerling}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Leerling Toevoegen
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Leerlingen</h1>
+        <Button className="ml-auto" onClick={handleAddStudent}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Nieuwe Leerling
         </Button>
       </div>
-
-      <div className="relative mb-4">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Zoek op naam, e-mail of instructeur..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-8 pr-8"
-        />
-        {searchTerm && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:bg-transparent"
-            onClick={() => setSearchTerm("")}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      <div className="overflow-x-auto border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Naam</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Telefoon</TableHead>
-              <TableHead>Rijbewijs Type</TableHead>
-              <TableHead>Instructeur</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Acties</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredLeerlingen.length === 0 ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>Overzicht Leerlingen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  Geen leerlingen gevonden.
-                </TableCell>
+                <TableHead>Naam</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead>Telefoon</TableHead>
+                <TableHead>Instructeur</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Acties</TableHead>
               </TableRow>
-            ) : (
-              filteredLeerlingen.map((leerling) => (
-                <TableRow key={leerling._id}>
-                  <TableCell className="font-medium">
-                    <Link href={`/leerlingen/${leerling._id}`} className="hover:underline">
-                      {leerling.naam}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{leerling.email}</TableCell>
-                  <TableCell>{leerling.telefoon}</TableCell>
-                  <TableCell>{leerling.rijbewijsType}</TableCell>
-                  <TableCell>{leerling.instructeurNaam}</TableCell>
+            </TableHeader>
+            <TableBody>
+              {students.map((student) => (
+                <TableRow key={student.id}>
+                  <TableCell>{student.name}</TableCell>
+                  <TableCell>{student.email}</TableCell>
+                  <TableCell>{student.phone}</TableCell>
+                  <TableCell>{getInstructorName(student.instructor)}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusBadgeVariant(leerling.status)}>{leerling.status}</Badge>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        student.status === "Actief"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : student.status === "Gepauzeerd"
+                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                      }`}
+                    >
+                      {student.status}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="icon" onClick={() => handleEditLeerling(leerling)}>
-                        <Edit className="h-4 w-4" />
-                        <span className="sr-only">Bewerk leerling</span>
+                    <Link href={`/leerlingen/${student.id}`}>
+                      <Button variant="ghost" size="icon" className="mr-2">
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">Bekijken</span>
                       </Button>
-                      <Button variant="destructive" size="icon" onClick={() => handleDeleteLeerling(leerling._id)}>
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Verwijder leerling</span>
-                      </Button>
-                    </div>
+                    </Link>
+                    <Button variant="ghost" size="icon" onClick={() => handleEditStudent(student)} className="mr-2">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Bewerken</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Verwijderen</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{currentLeerling ? "Leerling Bewerken" : "Nieuwe Leerling Toevoegen"}</DialogTitle>
+            <DialogTitle>{currentStudent ? "Leerling Bewerken" : "Nieuwe Leerling Toevoegen"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="naam" className="text-right">
+              <Label htmlFor="name" className="text-right">
                 Naam
               </Label>
-              <Input id="naam" name="naam" defaultValue={currentLeerling?.naam || ""} className="col-span-3" required />
+              <Input id="name" name="name" defaultValue={currentStudent?.name} className="col-span-3" required />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
@@ -309,35 +294,90 @@ export default function LeerlingenPage() {
                 id="email"
                 name="email"
                 type="email"
-                defaultValue={currentLeerling?.email || ""}
+                defaultValue={currentStudent?.email}
                 className="col-span-3"
                 required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="telefoon" className="text-right">
+              <Label htmlFor="phone" className="text-right">
                 Telefoon
               </Label>
+              <Input id="phone" name="phone" defaultValue={currentStudent?.phone} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address" className="text-right">
+                Adres
+              </Label>
+              <Input id="address" name="address" defaultValue={currentStudent?.address} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="postcode" className="text-right">
+                Postcode
+              </Label>
+              <Input id="postcode" name="postcode" defaultValue={currentStudent?.postcode} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="plaats" className="text-right">
+                Plaats
+              </Label>
+              <Input id="plaats" name="plaats" defaultValue={currentStudent?.plaats} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dateOfBirth" className="text-right">
+                Geboortedatum
+              </Label>
               <Input
-                id="telefoon"
-                name="telefoon"
-                type="tel"
-                defaultValue={currentLeerling?.telefoon || ""}
+                id="dateOfBirth"
+                name="dateOfBirth"
+                type="date"
+                defaultValue={currentStudent?.dateOfBirth}
                 className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="rijbewijsType" className="text-right">
+              <Label htmlFor="licenseType" className="text-right">
                 Rijbewijs Type
               </Label>
-              <Select name="rijbewijsType" defaultValue={currentLeerling?.rijbewijsType || "B"} required>
+              <Select name="licenseType" defaultValue={currentStudent?.licenseType} required>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecteer type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="B">B (Auto)</SelectItem>
+                  <SelectItem value="B">B (Personenauto)</SelectItem>
                   <SelectItem value="A">A (Motor)</SelectItem>
-                  <SelectItem value="C">C (Vrachtwagen)</SelectItem>
+                  <SelectItem value="AM">AM (Bromfiets)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="transmission" className="text-right">
+                Transmissie
+              </Label>
+              <Select name="transmission" defaultValue={currentStudent?.transmissie} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer transmissie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Handgeschakeld">Handgeschakeld</SelectItem>
+                  <SelectItem value="Automaat">Automaat</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="instructor" className="text-right">
+                Instructeur
+              </Label>
+              <Select name="instructor" defaultValue={currentStudent?.instructor}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer instructeur" />
+                </SelectTrigger>
+                <SelectContent>
+                  {instructors.map((instr) => (
+                    <SelectItem key={instr.id} value={instr.id}>
+                      {instr.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -345,7 +385,7 @@ export default function LeerlingenPage() {
               <Label htmlFor="status" className="text-right">
                 Status
               </Label>
-              <Select name="status" defaultValue={currentLeerling?.status || "Actief"} required>
+              <Select name="status" defaultValue={currentStudent?.status} required>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecteer status" />
                 </SelectTrigger>
@@ -357,26 +397,8 @@ export default function LeerlingenPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="instructeur" className="text-right">
-                Instructeur
-              </Label>
-              <Select name="instructeur" defaultValue={currentLeerling?.instructeur || ""}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer instructeur" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="N.v.t.">N.v.t.</SelectItem>
-                  {instructors.map((inst) => (
-                    <SelectItem key={inst._id} value={inst._id}>
-                      {inst.naam}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <DialogFooter>
-              <Button type="submit">{currentLeerling ? "Opslaan" : "Toevoegen"}</Button>
+              <Button type="submit">{currentStudent ? "Opslaan" : "Toevoegen"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

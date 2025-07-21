@@ -5,141 +5,101 @@ import * as RechartsPrimitive from "recharts"
 
 import { cn } from "@/lib/utils"
 
-// Workaround for https://github.com/recharts/recharts/issues/3615
-const Tooltip = <TValue extends RechartsPrimitive.Value, TName extends RechartsPrimitive.Name>({
-  cursor,
-  children,
-  className,
-  ...props
-}: React.PropsWithChildren<RechartsPrimitive.TooltipProps<TValue, TName>> & {
-  cursor?: boolean
-}) => {
-  const { active, payload, wrapperStyle } = props
-  if (active && payload && payload.length) {
-    return (
-      <div
-        className={cn(
-          "relative z-50 rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md",
-          className,
-        )}
-        style={wrapperStyle}
-      >
-        {cursor && (
-          <div
-            className={cn(
-              "absolute inset-y-0 left-0 w-px bg-muted",
-              "data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=horizontal]:inset-x-0 data-[orientation=horizontal]:top-0",
-            )}
-          />
-        )}
-        {children}
-      </div>
-    )
-  }
-
-  return null
+// Format: { light: string; dark: string }
+type ChartConfig = {
+  [k: string]: {
+    label?: string
+    icon?: React.ComponentType
+  } & ({ color?: string; theme?: never } | { theme?: Record<string, string>; color?: never })
 }
 
-const ChartTooltip = ({
-  className,
-  content,
-  ...props
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> & {
-  content?: React.ComponentProps<typeof ChartTooltipContent>
-}) => {
-  return (
-    <RechartsPrimitive.Tooltip
-      hideLabel
-      cursor={{ stroke: "hsl(var(--chart-1))", strokeWidth: 1 }}
-      content={<ChartTooltipContent {...content} />}
-      className={className}
-      {...props}
-    />
-  )
+type ChartContextProps = {
+  config: ChartConfig
 }
-ChartTooltip.displayName = "ChartTooltip"
 
-const ChartTooltipContent = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div"> & {
-    hideLabel?: boolean
-    hideIndicator?: boolean
-    nameKey?: string
-    valueKey?: string
-  }
->(({ className, hideLabel = false, hideIndicator = false, nameKey, valueKey, children, ...props }, ref) => {
-  const { active, payload } = RechartsPrimitive.useTooltip<RechartsPrimitive.Value, RechartsPrimitive.Name>()
+const ChartContext = React.createContext<ChartContextProps | null>(null)
 
-  if (!active || !payload?.length) {
-    return null
+function useChart() {
+  const context = React.useContext(ChartContext)
+
+  if (!context) {
+    throw new Error("useChart must be used within a <ChartContainer />")
   }
 
-  const data = payload[0]?.payload
-  const _nameKey = nameKey || payload[0]?.name
-  const _valueKey = valueKey || payload[0]?.value
-
-  return (
-    <div
-      ref={ref}
-      className={cn("rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md", className)}
-      {...props}
-    >
-      {!hideLabel && data?.[_nameKey as string] && <p className="font-medium">{data[_nameKey as string]}</p>}
-      <div className="grid gap-1.5 pt-2">
-        {payload.map((item, i) => {
-          if (item.dataKey === "id") return null
-          return (
-            <div key={item.dataKey} className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                {!hideIndicator && (
-                  <span
-                    className="size-3 rounded-full"
-                    style={{
-                      backgroundColor: item.color,
-                    }}
-                  />
-                )}
-                <span className="text-muted-foreground">{item.name || item.dataKey}</span>
-              </div>
-              <span className="font-medium text-foreground">{item.value}</span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-})
-ChartTooltipContent.displayName = "ChartTooltipContent"
+  return context
+}
 
 const ChartContainer = React.forwardRef<
   HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div"> & {
-    config: Record<string, { label?: string; color?: string }>
-    children: React.ReactNode
+  React.ComponentProps<"div"> & {
+    config: ChartConfig
+    children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>["children"]
   }
->(({ id, className, children, config, ...props }, ref) => {
-  const uniqueId = React.useId()
-  const chartId = `chart-${id || uniqueId}`
-
+>(({ config, className, children, ...props }, ref) => {
+  const id = React.useId()
+  if (!config) {
+    return null
+  }
   return (
-    <div ref={ref} className={cn("flex h-[350px] w-full flex-col items-center justify-center", className)} {...props}>
+    <ChartContext.Provider value={{ config }}>
       <div
-        data-chart={chartId}
-        className="flex h-full w-full flex-col [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-dot[stroke='#8884d8']]:fill-primary [&_.recharts-line]:stroke-primary [&_.recharts-tooltip-cursor]:fill-accent [&_.recharts-xaxis-tick_line]:stroke-border [&_.recharts-yaxis-tick_line]:stroke-border"
+        data-chart={id}
+        ref={ref}
+        className={cn("flex h-[300px] w-full flex-col items-center justify-center overflow-hidden", className)}
+        {...props}
       >
-        {React.Children.map(children, (child) => {
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child, {
-              id: chartId,
-              config,
-            } as React.PropsWithChildren<any>)
-          }
-          return child
-        })}
+        <RechartsPrimitive.ResponsiveContainer>{children}</RechartsPrimitive.ResponsiveContainer>
       </div>
-    </div>
+    </ChartContext.Provider>
   )
 })
 ChartContainer.displayName = "ChartContainer"
 
-export { ChartTooltip, ChartTooltipContent, ChartContainer }
+const ChartTooltip = RechartsPrimitive.Tooltip
+
+const ChartTooltipContent = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+    React.ComponentProps<"div"> & {
+      hideLabel?: boolean
+      hideIndicator?: boolean
+      is
+      nameKey?: string
+      valueKey?: string
+    }
+>(
+  (
+    {
+      className,
+      viewBox,
+      active,
+      payload,
+      label,
+      nameKey,
+      valueKey,
+      hideLabel = false,
+      hideIndicator = false,
+      ...props
+    },
+    ref
+  ) => {
+    const { config } = useChart()
+
+    if (!active || !payload?.length) {
+      return null
+    }
+
+    const relevantPayload = payload.filter((item: any) => config[item.dataKey as keyof ChartConfig]?.label)
+
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "grid min-w-[130px] items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl",
+          className
+        )}
+        {...props}
+      >
+        {!hideLabel && label ? (
+          <div className="row-span-2 flex flex-col">
+            \

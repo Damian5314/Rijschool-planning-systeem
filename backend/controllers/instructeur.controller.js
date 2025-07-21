@@ -4,9 +4,9 @@ const Instructeur = require("../models/instructeur.model")
 exports.getAllInstructeurs = async (req, res) => {
   try {
     const instructeurs = await Instructeur.find()
-    res.json(instructeurs)
-  } catch (err) {
-    res.status(500).json({ message: err.message })
+    res.status(200).json(instructeurs)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 }
 
@@ -15,58 +15,64 @@ exports.getInstructeurById = async (req, res) => {
   try {
     const instructeur = await Instructeur.findById(req.params.id)
     if (!instructeur) {
-      return res.status(404).json({ message: "Instructeur not found" })
+      return res.status(404).json({ message: "Instructeur niet gevonden" })
     }
-    res.json(instructeur)
-  } catch (err) {
-    res.status(500).json({ message: err.message })
+    res.status(200).json(instructeur)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 }
 
 // Create a new instructor
 exports.createInstructeur = async (req, res) => {
-  const { naam, email, telefoon, rijbewijsType, status } = req.body
-  const newInstructeur = new Instructeur({
-    naam,
-    email,
-    telefoon,
-    rijbewijsType,
-    status,
+  const instructeur = new Instructeur({
+    naam: req.body.naam,
+    email: req.body.email,
+    telefoon: req.body.telefoon,
+    rijbewijsType: req.body.rijbewijsType,
+    status: req.body.status,
   })
 
   try {
-    const savedInstructeur = await newInstructeur.save()
-    res.status(201).json(savedInstructeur)
-  } catch (err) {
-    res.status(400).json({ message: err.message })
+    const newInstructeur = await instructeur.save()
+    res.status(201).json(newInstructeur)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
   }
 }
 
 // Update an instructor
 exports.updateInstructeur = async (req, res) => {
   try {
-    const updatedInstructeur = await Instructeur.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    })
-    if (!updatedInstructeur) {
-      return res.status(404).json({ message: "Instructeur not found" })
+    const instructeur = await Instructeur.findById(req.params.id)
+    if (!instructeur) {
+      return res.status(404).json({ message: "Instructeur niet gevonden" })
     }
-    res.json(updatedInstructeur)
-  } catch (err) {
-    res.status(400).json({ message: err.message })
+
+    instructeur.naam = req.body.naam || instructeur.naam
+    instructeur.email = req.body.email || instructeur.email
+    instructeur.telefoon = req.body.telefoon || instructeur.telefoon
+    instructeur.rijbewijsType = req.body.rijbewijsType || instructeur.rijbewijsType
+    instructeur.status = req.body.status || instructeur.status
+
+    const updatedInstructeur = await instructeur.save()
+    res.status(200).json(updatedInstructeur)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
   }
 }
 
 // Delete an instructor
 exports.deleteInstructeur = async (req, res) => {
   try {
-    const deletedInstructeur = await Instructeur.findByIdAndDelete(req.params.id)
-    if (!deletedInstructeur) {
-      return res.status(404).json({ message: "Instructeur not found" })
+    const instructeur = await Instructeur.findById(req.params.id)
+    if (!instructeur) {
+      return res.status(404).json({ message: "Instructeur niet gevonden" })
     }
-    res.json({ message: "Instructeur deleted" })
-  } catch (err) {
-    res.status(500).json({ message: err.message })
+
+    await Instructeur.deleteOne({ _id: req.params.id })
+    res.status(200).json({ message: "Instructeur succesvol verwijderd" })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 }

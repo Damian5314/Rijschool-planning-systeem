@@ -3,12 +3,13 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import ClientLayout from "./ClientLayout"
+import { SidebarInset } from "@/components/ui/sidebar"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Rijschool Planning Systeem",
-  description: "Beheer je rijschool efficiënt met dit planning systeem.",
+  title: "Rijschool Plansysteem",
+  description: "Beheer je rijschool efficiënt",
     generator: 'v0.dev'
 }
 
@@ -20,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="nl">
       <body className={inter.className}>
-        <ClientLayout>{children}</ClientLayout>
+        <ClientLayout>
+          <SidebarInset>{children}</SidebarInset>
+        </ClientLayout>
       </body>
     </html>
   )

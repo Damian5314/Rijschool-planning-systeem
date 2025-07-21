@@ -1,62 +1,89 @@
 import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Loading() {
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-40" />
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-9 w-32" />
+        <Skeleton className="ml-auto h-9 w-24" />
       </div>
-      <div className="relative mb-4">
-        <Skeleton className="h-10 w-full md:w-1/3" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              <Skeleton className="h-4 w-24" />
+            </CardTitle>
+            <Skeleton className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <Skeleton className="h-8 w-16" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <Skeleton className="h-3 w-32 mt-1" />
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              <Skeleton className="h-4 w-24" />
+            </CardTitle>
+            <Skeleton className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <Skeleton className="h-8 w-16" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <Skeleton className="h-3 w-32 mt-1" />
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              <Skeleton className="h-4 w-24" />
+            </CardTitle>
+            <Skeleton className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <Skeleton className="h-8 w-16" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <Skeleton className="h-3 w-32 mt-1" />
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              <Skeleton className="h-4 w-24" />
+            </CardTitle>
+            <Skeleton className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <Skeleton className="h-8 w-16" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <Skeleton className="h-3 w-32 mt-1" />
+            </p>
+          </CardContent>
+        </Card>
       </div>
-      <div className="overflow-x-auto border rounded-lg">
-        <table className="w-full">
-          <thead>
-            <tr className="[&_tr]:border-b">
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                <Skeleton className="h-5 w-24" />
-              </th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                <Skeleton className="h-5 w-24" />
-              </th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                <Skeleton className="h-5 w-24" />
-              </th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                <Skeleton className="h-5 w-24" />
-              </th>
-              <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                <Skeleton className="h-5 w-24 ml-auto" />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                  <Skeleton className="h-5 w-32" />
-                </td>
-                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                  <Skeleton className="h-5 w-24" />
-                </td>
-                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                  <Skeleton className="h-5 w-20" />
-                </td>
-                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                  <Skeleton className="h-5 w-28" />
-                </td>
-                <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-right">
-                  <div className="flex justify-end gap-2">
-                    <Skeleton className="h-8 w-8 rounded-md" />
-                    <Skeleton className="h-8 w-8 rounded-md" />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Card className="flex-1">
+        <CardHeader>
+          <CardTitle>
+            <Skeleton className="h-6 w-48" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[300px] w-full" />
+        </CardContent>
+      </Card>
     </div>
   )
 }

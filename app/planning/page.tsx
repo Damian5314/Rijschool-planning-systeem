@@ -2,332 +2,353 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
-import { Calendar } from "@/components/ui/calendar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { format, startOfWeek, addDays, isSameDay, parseISO } from "date-fns"
-import { nl } from "date-fns/locale"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2, CalendarIcon } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { PlusCircle, Edit, Trash2 } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-
-interface Appointment {
-  id: string
-  date: string // YYYY-MM-DD
-  time: string // HH:MM
-  studentId: string
-  studentName: string
-  instructorId: string
-  instructorName: string
-  type: "Rijles" | "Examen" | "Intake" | "Anders"
-  duration: number // in minutes
-  notes?: string
-}
-
-interface Student {
-  _id: string
-  naam: string
-}
-
-interface Instructor {
-  _id: string
-  naam: string
-}
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { nl } from "date-fns/locale"
+import { toast } from "@/components/ui/use-toast"
+import type { Lesson, Student, Instructor, Vehicle } from "@/lib/data" // Import interfaces
 
 export default function PlanningPage() {
-  const { toast } = useToast()
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [currentAppointment, setCurrentAppointment] = useState<Appointment | null>(null)
+  const [lessons, setLessons] = useState<Lesson[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [instructors, setInstructors] = useState<Instructor[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchStudents = useCallback(async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/studenten`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch students")
-      }
-      const data = await response.json()
-      setStudents(data)
-    } catch (error) {
-      console.error("Error fetching students:", error)
-      toast({
-        title: "Fout",
-        description: "Kon leerlingen niet laden.",
-        variant: "destructive",
-      })
-    }
-  }, [toast])
-
-  const fetchInstructors = useCallback(async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/instructeurs`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch instructors")
-      }
-      const data = await response.json()
-      setInstructors(data)
-    } catch (error) {
-      console.error("Error fetching instructors:", error)
-      toast({
-        title: "Fout",
-        description: "Kon instructeurs niet laden.",
-        variant: "destructive",
-      })
-    }
-  }, [toast])
-
-  const fetchAppointments = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/lessen`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch lessons")
-      }
-      const data = await response.json()
-
-      // Map backend data to frontend Appointment interface
-      const formattedAppointments: Appointment[] = data.map((lesson: any) => ({
-        id: lesson._id,
-        date: format(parseISO(lesson.datum), "yyyy-MM-dd"),
-        time: lesson.tijd,
-        studentId: lesson.student._id,
-        studentName: lesson.student.naam,
-        instructorId: lesson.instructeur._id,
-        instructorName: lesson.instructeur.naam,
-        type: lesson.type || "Rijles", // Default if not specified
-        duration: lesson.duur,
-        notes: lesson.opmerkingen,
-      }))
-      setAppointments(formattedAppointments)
-    } catch (err) {
-      console.error("Error fetching appointments:", err)
-      setError("Kon afspraken niet laden. Probeer het later opnieuw.")
-      toast({
-        title: "Fout",
-        description: "Kon afspraken niet laden.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null)
+  const [date, setDate] = useState<Date | undefined>(undefined)
 
   useEffect(() => {
+    fetchLessons()
     fetchStudents()
     fetchInstructors()
-    fetchAppointments()
-  }, [fetchStudents, fetchInstructors, fetchAppointments])
+    fetchVehicles()
+  }, [])
 
-  const daysOfWeek = Array.from({ length: 7 }).map((_, i) =>
-    addDays(startOfWeek(selectedDate || new Date(), { locale: nl }), i),
-  )
-
-  const appointmentsForSelectedDay = appointments
-    .filter((appt) => isSameDay(parseISO(appt.date), selectedDate || new Date()))
-    .sort((a, b) => a.time.localeCompare(b.time))
-
-  const handleAddAppointment = () => {
-    setCurrentAppointment(null)
-    setIsDialogOpen(true)
-  }
-
-  const handleEditAppointment = (appointment: Appointment) => {
-    setCurrentAppointment(appointment)
-    setIsDialogOpen(true)
-  }
-
-  const handleDeleteAppointment = async (id: string) => {
+  const fetchLessons = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/lessen/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setLessons(
+        data.map((item: any) => ({
+          id: item._id,
+          studentId: item.student,
+          instructorId: item.instructeur,
+          vehicleId: "mock-vehicle-id", // Placeholder as vehicle is not directly linked in lesson model yet
+          date: new Date(item.datum).toISOString().split("T")[0],
+          time: item.tijd,
+          duration: item.duur,
+          type: item.type,
+          status: "scheduled", // Assuming all fetched lessons are scheduled
+          notes: item.opmerkingen,
+          location: "N.v.t.", // Placeholder
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van lessen:", error)
+      toast({
+        title: "Fout",
+        description: "Kon lessen niet ophalen.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setStudents(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          address: item.adres,
+          dateOfBirth: item.geboortedatum ? new Date(item.geboortedatum).toISOString().split("T")[0] : "",
+          licenseType: item.rijbewijsType,
+          startDate: new Date(item.datumAangemaakt).toISOString().split("T")[0],
+          instructor: item.instructeur,
+          lessonCount: item.lesGeschiedenis.length,
+          theoryPassed: item.examens.some((exam: any) => exam.type === "Theorie" && exam.resultaat === "Geslaagd"),
+          practicalExamDate: item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")
+            ?.datum
+            ? new Date(
+                item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")?.datum,
+              )
+                .toISOString()
+                .split("T")[0]
+            : undefined,
+          status: item.status,
+          progress: (item.lesGeschiedenis.length / 40) * 100,
+          nextLesson: "N.v.t.",
+          avatar: "/placeholder-user.jpg",
+          postcode: item.postcode,
+          plaats: item.plaats,
+          transmissie: item.transmissie,
+          financieel: item.financieel,
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van leerlingen:", error)
+    }
+  }
+
+  const fetchInstructors = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setInstructors(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          specialization: item.rijbewijsType,
+          experience: 0,
+          rating: 0,
+          availability: [],
+          students: 0,
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van instructeurs:", error)
+    }
+  }
+
+  const fetchVehicles = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/vehicles`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setVehicles(
+        data.map((item: any) => ({
+          id: item._id,
+          brand: item.merk,
+          model: item.model,
+          year: item.bouwjaar,
+          licensePlate: item.kenteken,
+          type: item.transmissie === "Handgeschakeld" ? "manual" : "automatic",
+          fuelType: item.brandstof,
+          mileage: item.kilometerstand,
+          lastMaintenance: item.laatsteOnderhoud ? new Date(item.laatsteOnderhoud).toISOString().split("T")[0] : "",
+          nextMaintenance: item.volgendeOnderhoud ? new Date(item.volgendeOnderhoud).toISOString().split("T")[0] : "",
+          keuringDate: item.apkDatum ? new Date(item.apkDatum).toISOString().split("T")[0] : "",
+          status: item.status,
+          instructor: item.instructeur,
+          image: "/placeholder.svg", // Placeholder
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van voertuigen:", error)
+    }
+  }
+
+  const handleAddLesson = () => {
+    setCurrentLesson(null)
+    setDate(undefined)
+    setIsDialogOpen(true)
+  }
+
+  const handleEditLesson = (lesson: Lesson) => {
+    setCurrentLesson(lesson)
+    setDate(new Date(lesson.date))
+    setIsDialogOpen(true)
+  }
+
+  const handleDeleteLesson = async (id: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons/${id}`, {
         method: "DELETE",
       })
       if (!response.ok) {
-        throw new Error("Failed to delete lesson")
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      setAppointments(appointments.filter((appt) => appt.id !== id))
+      setLessons(lessons.filter((lesson) => lesson.id !== id))
       toast({
-        title: "Afspraak Verwijderd",
-        description: "Afspraak is succesvol verwijderd.",
+        title: "Les verwijderd",
+        description: `Les is succesvol verwijderd.`,
       })
-    } catch (err) {
-      console.error("Error deleting appointment:", err)
+    } catch (error) {
+      console.error("Fout bij het verwijderen van les:", error)
       toast({
         title: "Fout",
-        description: "Kon afspraak niet verwijderen.",
+        description: "Kon les niet verwijderen.",
         variant: "destructive",
       })
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-
-    const studentId = formData.get("studentId") as string
-    const instructorId = formData.get("instructorId") as string
-    const student = students.find((s) => s._id === studentId)
-    const instructor = instructors.find((i) => i._id === instructorId)
-
-    if (!student || !instructor) {
-      toast({
-        title: "Fout",
-        description: "Selecteer een geldige leerling en instructeur.",
-        variant: "destructive",
-      })
-      return
-    }
-
+    const formData = new FormData(e.target as HTMLFormElement)
     const lessonData = {
-      datum: formData.get("date") as string,
+      datum: date ? date.toISOString() : "",
       tijd: formData.get("time") as string,
       duur: Number.parseInt(formData.get("duration") as string),
-      student: studentId,
-      instructeur: instructorId,
+      student: formData.get("studentId") as string,
+      instructeur: formData.get("instructorId") as string,
       type: formData.get("type") as string,
       opmerkingen: formData.get("notes") as string,
     }
 
     try {
       let response
-      if (currentAppointment) {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/lessen/${currentAppointment.id}`, {
+      if (currentLesson) {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons/${currentLesson.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(lessonData),
         })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Les bijgewerkt",
+          description: `Les is succesvol bijgewerkt.`,
+        })
       } else {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/lessen`, {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(lessonData),
         })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Les toegevoegd",
+          description: `Nieuwe les is succesvol toegevoegd.`,
+        })
       }
-
-      if (!response.ok) {
-        throw new Error("Failed to save appointment")
-      }
-
-      await fetchAppointments() // Refresh the list
       setIsDialogOpen(false)
-      toast({
-        title: "Succes",
-        description: `Afspraak succesvol ${currentAppointment ? "bijgewerkt" : "toegevoegd"}.`,
-      })
-    } catch (err) {
-      console.error("Error saving appointment:", err)
+      fetchLessons() // Refresh the list
+    } catch (error) {
+      console.error("Fout bij opslaan les:", error)
       toast({
         title: "Fout",
-        description: `Kon afspraak niet ${currentAppointment ? "bijwerken" : "toevoegen"}.`,
+        description: "Kon les niet opslaan.",
         variant: "destructive",
       })
     }
   }
 
-  if (loading) {
-    return <div className="p-4 md:p-6">Laden van planning...</div>
+  const getStudentName = (studentId: string) => {
+    return students.find((s) => s.id === studentId)?.name || "Onbekende student"
   }
 
-  if (error) {
-    return <div className="p-4 md:p-6 text-red-500">{error}</div>
+  const getInstructorName = (instructorId: string) => {
+    return instructors.find((i) => i.id === instructorId)?.name || "Onbekende instructeur"
+  }
+
+  const getVehicleInfo = (vehicleId: string) => {
+    const vehicle = vehicles.find((v) => v.id === vehicleId)
+    return vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.licensePlate})` : "N.v.t."
   }
 
   return (
-    <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>Kalender</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="rounded-md border"
-              locale={nl}
-            />
-          </CardContent>
-        </Card>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Lesplanning</h1>
+        <Button className="ml-auto" onClick={handleAddLesson}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Nieuwe Les
+        </Button>
       </div>
-
-      <div className="lg:col-span-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>
-              Afspraken op {selectedDate ? format(selectedDate, "PPP", { locale: nl }) : "Geen datum geselecteerd"}
-            </CardTitle>
-            <Button onClick={handleAddAppointment}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Nieuwe Afspraak
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {appointmentsForSelectedDay.length === 0 ? (
-              <p className="text-muted-foreground">Geen afspraken voor deze dag.</p>
-            ) : (
-              <div className="space-y-4">
-                {appointmentsForSelectedDay.map((appt) => (
-                  <div key={appt.id} className="border rounded-md p-4 flex justify-between items-center">
-                    <div>
-                      <h3 className="font-semibold text-lg">
-                        {appt.time} - {appt.type}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Leerling: {appt.studentName} | Instructeur: {appt.instructorName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Duur: {appt.duration} minuten</p>
-                      {appt.notes && <p className="text-sm italic">{appt.notes}</p>}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="icon" onClick={() => handleEditAppointment(appt)}>
-                        <Edit className="h-4 w-4" />
-                        <span className="sr-only">Bewerk afspraak</span>
-                      </Button>
-                      <Button variant="destructive" size="icon" onClick={() => handleDeleteAppointment(appt.id)}>
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Verwijder afspraak</span>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Overzicht Lessen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Datum</TableHead>
+                <TableHead>Tijd</TableHead>
+                <TableHead>Duur (min)</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Instructeur</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Opmerkingen</TableHead>
+                <TableHead className="text-right">Acties</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lessons.map((lesson) => (
+                <TableRow key={lesson.id}>
+                  <TableCell>{format(new Date(lesson.date), "dd-MM-yyyy", { locale: nl })}</TableCell>
+                  <TableCell>{lesson.time}</TableCell>
+                  <TableCell>{lesson.duration}</TableCell>
+                  <TableCell>{getStudentName(lesson.studentId)}</TableCell>
+                  <TableCell>{getInstructorName(lesson.instructorId)}</TableCell>
+                  <TableCell>{lesson.type}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{lesson.notes || "-"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditLesson(lesson)} className="mr-2">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Bewerken</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteLesson(lesson.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Verwijderen</span>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{currentAppointment ? "Afspraak Bewerken" : "Nieuwe Afspraak Toevoegen"}</DialogTitle>
+            <DialogTitle>{currentLesson ? "Les Bewerken" : "Nieuwe Les Toevoegen"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="date" className="text-right">
                 Datum
               </Label>
-              <Input
-                id="date"
-                name="date"
-                type="date"
-                defaultValue={currentAppointment?.date || (selectedDate ? format(selectedDate, "yyyy-MM-dd") : "")}
-                className="col-span-3"
-                required
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={`col-span-3 justify-start text-left font-normal ${!date && "text-muted-foreground"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP", { locale: nl }) : <span>Kies een datum</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus locale={nl} />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="time" className="text-right">
@@ -337,7 +358,7 @@ export default function PlanningPage() {
                 id="time"
                 name="time"
                 type="time"
-                defaultValue={currentAppointment?.time || "09:00"}
+                defaultValue={currentLesson?.time}
                 className="col-span-3"
                 required
               />
@@ -350,32 +371,25 @@ export default function PlanningPage() {
                 id="duration"
                 name="duration"
                 type="number"
-                defaultValue={currentAppointment?.duration || 60}
+                defaultValue={currentLesson?.duration || 60}
                 className="col-span-3"
+                min="15"
+                step="15"
                 required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="studentId" className="text-right">
-                Leerling
+                Student
               </Label>
-              <Select
-                name="studentId"
-                value={currentAppointment?.studentId || ""}
-                onValueChange={(value) =>
-                  setCurrentAppointment((prev) =>
-                    prev ? { ...prev, studentId: value } : { ...mockAppointment, studentId: value },
-                  )
-                }
-                required
-              >
+              <Select name="studentId" defaultValue={currentLesson?.studentId} required>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer leerling" />
+                  <SelectValue placeholder="Selecteer student" />
                 </SelectTrigger>
                 <SelectContent>
                   {students.map((student) => (
-                    <SelectItem key={student._id} value={student._id}>
-                      {student.naam}
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -385,23 +399,14 @@ export default function PlanningPage() {
               <Label htmlFor="instructorId" className="text-right">
                 Instructeur
               </Label>
-              <Select
-                name="instructorId"
-                value={currentAppointment?.instructorId || ""}
-                onValueChange={(value) =>
-                  setCurrentAppointment((prev) =>
-                    prev ? { ...prev, instructorId: value } : { ...mockAppointment, instructorId: value },
-                  )
-                }
-                required
-              >
+              <Select name="instructorId" defaultValue={currentLesson?.instructorId} required>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecteer instructeur" />
                 </SelectTrigger>
                 <SelectContent>
                   {instructors.map((instructor) => (
-                    <SelectItem key={instructor._id} value={instructor._id}>
-                      {instructor.naam}
+                    <SelectItem key={instructor.id} value={instructor.id}>
+                      {instructor.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -409,9 +414,9 @@ export default function PlanningPage() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="type" className="text-right">
-                Type Afspraak
+                Type Les
               </Label>
-              <Select name="type" defaultValue={currentAppointment?.type || "Rijles"} required>
+              <Select name="type" defaultValue={currentLesson?.type || "Rijles"} required>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecteer type" />
                 </SelectTrigger>
@@ -427,28 +432,14 @@ export default function PlanningPage() {
               <Label htmlFor="notes" className="text-right">
                 Opmerkingen
               </Label>
-              <Textarea id="notes" name="notes" defaultValue={currentAppointment?.notes || ""} className="col-span-3" />
+              <Textarea id="notes" name="notes" defaultValue={currentLesson?.notes || ""} className="col-span-3" />
             </div>
             <DialogFooter>
-              <Button type="submit">{currentAppointment ? "Opslaan" : "Toevoegen"}</Button>
+              <Button type="submit">{currentLesson ? "Opslaan" : "Toevoegen"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </div>
   )
-}
-
-// Mock appointment for initial state if currentAppointment is null
-const mockAppointment: Appointment = {
-  id: "",
-  date: format(new Date(), "yyyy-MM-dd"),
-  time: "09:00",
-  studentId: "",
-  studentName: "",
-  instructorId: "",
-  instructorName: "",
-  type: "Rijles",
-  duration: 60,
-  notes: "",
 }

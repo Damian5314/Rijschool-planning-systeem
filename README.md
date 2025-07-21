@@ -1,106 +1,154 @@
-# Rijschool Planning Systeem
+# Rijschool Plansysteem
 
-Dit is een webapplicatie voor het beheren van een rijschool, inclusief leerlingen, instructeurs, planning, facturatie en meer.
+Dit is een plansysteem voor een rijschool, gebouwd met Next.js en een Node.js/Express backend met MongoDB.
+
+## Features
+
+-   **Gebruikersbeheer**: Aanmelden, inloggen, rollen (admin, gebruiker).
+-   **Instructeursbeheer**: Toevoegen, bewerken, verwijderen van instructeurs.
+-   **Leerlingenbeheer**: Toevoegen, bewerken, verwijderen van leerlingen, inclusief lesgeschiedenis en financiële gegevens.
+-   **Voertuigenbeheer**: Toevoegen, bewerken, verwijderen van voertuigen met onderhoudsgegevens.
+-   **Lesplanning**: Plannen van lessen met instructeurs, leerlingen en voertuigen.
+-   **Facturatie**: Genereren en beheren van facturen (mock data voor nu).
+-   **Statistieken**: Overzicht van lessen, leerlingen en instructeurs.
+-   **Instellingen**: Beheer van rijschoolgegevens en systeeminstellingen.
 
 ## Technologieën
 
 **Frontend:**
-- Next.js (React)
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
+-   Next.js (App Router)
+-   React
+-   TypeScript
+-   Tailwind CSS
+-   shadcn/ui
 
 **Backend:**
-- Node.js
-- Express.js
-- MongoDB (via Mongoose)
-- JWT voor authenticatie
+-   Node.js
+-   Express.js
+-   MongoDB (met Mongoose)
+-   JWT voor authenticatie
 
-## Setup (Lokaal)
+## Installatie
 
-### 1. Backend Setup
+### 1. Kloon de repository
 
-Navigeer naar de `backend` map:
+\`\`\`bash
+git clone <jouw-repo-url>
+cd rijschool-plansysteem
+\`\`\`
+
+### 2. Backend setup
+
+Navigeer naar de `backend` directory:
+
 \`\`\`bash
 cd backend
 \`\`\`
 
-Installeer de Node.js afhankelijkheden:
+Installeer de Node.js dependencies:
+
 \`\`\`bash
 npm install
+# of
+yarn install
 \`\`\`
 
-Maak een `.env` bestand aan in de `backend` map en voeg de volgende variabelen toe:
-\`\`\`
+Maak een `.env` bestand aan in de `backend` directory en voeg de volgende variabelen toe:
+
+\`\`\`env
 MONGO_URI=jouw_mongodb_connection_string
-JWT_SECRET=een_geheime_sleutel_voor_jwt
+JWT_SECRET=een_sterke_geheime_sleutel
 PORT=5000
 \`\`\`
+
 Vervang `jouw_mongodb_connection_string` met de URI van je MongoDB database (bijv. van MongoDB Atlas).
+Vervang `een_sterke_geheime_sleutel` met een willekeurige, complexe string.
 
 Start de backend server:
+
 \`\`\`bash
-npm run dev
+npm start
+# of
+yarn start
 \`\`\`
-De backend zal standaard draaien op `http://localhost:5000`.
 
-### 2. Database Seeding (Optioneel)
+De backend zal draaien op `http://localhost:5000`.
 
-Om testdata in je database te plaatsen, navigeer naar de `backend` map en voer het seed-script uit:
-\`\`\`bash
-node scripts/seed.js
-\`\`\`
-**Let op:** Dit script zal bestaande data in de `Student`, `Instructeur`, `Les` en `User` collecties verwijderen voordat nieuwe testdata wordt toegevoegd.
+### 3. Frontend setup
 
-### 3. Frontend Setup
+Navigeer terug naar de root directory van het project:
 
-Navigeer terug naar de root van het project:
 \`\`\`bash
 cd ..
 \`\`\`
 
-Installeer de frontend afhankelijkheden:
+Installeer de Next.js dependencies:
+
 \`\`\`bash
 npm install
+# of
+yarn install
 \`\`\`
 
-Maak een `.env.local` bestand aan in de root van het project en voeg de volgende variabele toe:
-\`\`\`
-NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
-\`\`\`
-Zorg ervoor dat de URL overeenkomt met de poort waarop je backend draait.
+Maak een `.env.local` bestand aan in de root directory en voeg de volgende variabele toe:
 
-Start de Next.js ontwikkelserver:
+\`\`\`env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:5000/api
+\`\`\`
+
+Start de Next.js development server:
+
 \`\`\`bash
 npm run dev
+# of
+yarn dev
 \`\`\`
-De frontend zal standaard draaien op `http://localhost:3000`.
 
-## Deployment naar Vercel
+De frontend zal draaien op `http://localhost:3000`.
 
-Voor deployment naar Vercel, zorg ervoor dat je de omgevingsvariabelen (`MONGO_URI`, `JWT_SECRET`, `PORT` voor de backend en `NEXT_PUBLIC_BACKEND_URL` voor de frontend) configureert in de Vercel projectinstellingen.
+## Database Seeding
 
-Voor de `NEXT_PUBLIC_BACKEND_URL` in Vercel, moet je de URL van je gedeployde backend API gebruiken (bijv. `https://jouw-backend-api.vercel.app/api`).
+Om de database te vullen met initiële testdata (instructeurs, leerlingen, lessen, gebruikers), kun je het seed script uitvoeren. Zorg ervoor dat je MongoDB draait en dat je `MONGO_URI` correct is ingesteld in `backend/.env`.
 
-## Functionaliteiten
+Navigeer naar de `backend/scripts` directory en voer het script uit:
 
-- **Leerlingenbeheer:** Toevoegen, bewerken, verwijderen en bekijken van leerlinggegevens.
-- **Instructeursbeheer:** Toevoegen, bewerken, verwijderen en bekijken van instructeurgegevens.
-- **Planning:** Overzicht van lessen en afspraken (nog te integreren met backend).
-- **Facturatie:** Facturen aanmaken, beheren, PDF genereren en email functionaliteit.
-- **Authenticatie:** Gebruikersregistratie en login (basis implementatie).
-- **Dashboard:** Overzicht van belangrijke statistieken.
-- **Voertuigenbeheer:** Beheer van voertuigen.
-- **Examens:** Beheer van examens.
-- **Instellingen:** Algemene rijschoolinstellingen.
-
-## Toekomstige uitbreidingen (Work Items)
-
-- Database integratie voor alle modules.
-- Uitgebreid authenticatiesysteem met rollen en rechten.
-- Notificaties (bijv. SMS/WhatsApp integratie).
-- Uitgebreide rapportage en statistieken.
-- Mobiele app versie.
-- Financieel systeem (uitgebreider dan alleen facturatie).
-- Leskaart systeem.
+\`\`\`bash
+cd backend/scripts
+node seed.js
 \`\`\`
+
+Dit zal de database opschonen en vullen met de gedefinieerde testdata.
+
+## Gebruik
+
+Open je browser en ga naar `http://localhost:3000`.
+Je kunt inloggen met de volgende gegevens (na het uitvoeren van het seed script):
+**Admin:**
+-   **Email:** `admin@example.com`
+-   **Wachtwoord:** `password123`
+
+**Gebruiker:**
+-   **Email:** `user@example.com`
+-   **Wachtwoord:** `password123`
+
+## Projectstructuur
+
+\`\`\`
+.
+├── app/                  # Next.js App Router pages
+├── backend/              # Node.js/Express backend
+│   ├── config/           # Database configuratie
+│   ├── controllers/      # Logica voor API endpoints
+│   ├── middleware/       # Express middleware (bijv. authenticatie)
+│   ├── models/           # Mongoose schema's
+│   ├── routes/           # API routes
+│   ├── scripts/          # Database seeding scripts
+│   ├── services/         # Business logica
+│   └── server.js         # Backend entry point
+├── components/           # React componenten (custom en shadcn/ui)
+├── hooks/                # React hooks
+├── lib/                  # Utility functies en data types
+├── public/               # Statische assets
+├── styles/               # Globale CSS
+├── tailwind.config.ts    # Tailwind CSS configuratie
+└── tsconfig.json         # TypeScript configuratie

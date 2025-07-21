@@ -1,21 +1,9 @@
 "use client"
 
-import type * as React from "react"
-import Link from "next/link"
+import * as React from "react"
 import { usePathname } from "next/navigation"
-import {
-  Calendar,
-  Car,
-  DollarSign,
-  GraduationCap,
-  Home,
-  Users,
-  Settings,
-  BarChart,
-  PanelLeft,
-  User2,
-  ChevronUp,
-} from "lucide-react"
+import Link from "next/link"
+import { Calendar, Car, ClipboardList, DollarSign, Home, Settings, Users, BarChart2 } from "lucide-react"
 
 import {
   Sidebar,
@@ -28,112 +16,120 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
-  useSidebar,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { LogoutButton } from "./logout-button"
 
-// Menu items.
-const mainNavigation = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: Home,
-  },
-  {
-    title: "Leerlingen",
-    url: "/leerlingen",
-    icon: Users,
-  },
-  {
-    title: "Instructeurs",
-    url: "/instructeurs",
-    icon: GraduationCap,
-  },
-  {
-    title: "Voertuigen",
-    url: "/voertuigen",
-    icon: Car,
-  },
-  {
-    title: "Planning",
-    url: "/planning",
-    icon: Calendar,
-  },
-  {
-    title: "Facturatie",
-    url: "/facturatie",
-    icon: DollarSign,
-  },
-  {
-    title: "Examens",
-    url: "/examens",
-    icon: GraduationCap, // Reusing icon, consider a different one if available
-  },
-  {
-    title: "Statistieken",
-    url: "/statistieken",
-    icon: BarChart,
-  },
-]
-
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar() {
   const pathname = usePathname()
-  const { toggleSidebar } = useSidebar()
+
+  const navItems = [
+    {
+      title: "Algemeen",
+      items: [
+        {
+          href: "/",
+          icon: Home,
+          text: "Dashboard",
+        },
+        {
+          href: "/planning",
+          icon: Calendar,
+          text: "Planning",
+        },
+        {
+          href: "/leerlingen",
+          icon: Users,
+          text: "Leerlingen",
+        },
+        {
+          href: "/instructeurs",
+          icon: ClipboardList,
+          text: "Instructeurs",
+        },
+        {
+          href: "/voertuigen",
+          icon: Car,
+          text: "Voertuigen",
+        },
+      ],
+    },
+    {
+      title: "Financieel",
+      items: [
+        {
+          href: "/facturatie",
+          icon: DollarSign,
+          text: "Facturatie",
+        },
+      ],
+    },
+    {
+      title: "Rapportage",
+      items: [
+        {
+          href: "/statistieken",
+          icon: BarChart2,
+          text: "Statistieken",
+        },
+        {
+          href: "/examens",
+          icon: ClipboardList,
+          text: "Examens",
+        },
+      ],
+    },
+    {
+      title: "Systeem",
+      items: [
+        {
+          href: "/instellingen",
+          icon: Settings,
+          text: "Instellingen",
+        },
+      ],
+    },
+  ]
 
   return (
-    <Sidebar {...props}>
-      <SidebarHeader>
+    <Sidebar>
+      <SidebarHeader className="p-4">
         <Link href="/" className="flex items-center gap-2 font-semibold">
-          <PanelLeft className="h-6 w-6" />
-          <span className="text-lg">Rijschool App</span>
+          <Car className="h-6 w-6" />
+          <span className="text-lg">Rijschool Plansysteem</span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigatie</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNavigation.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {navItems.map((group, index) => (
+          <React.Fragment key={group.title}>
+            <SidebarGroup>
+              <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={pathname === item.href}>
+                        <Link href={item.href}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.text}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            {index < navItems.length - 1 && <SidebarSeparator />}
+          </React.Fragment>
+        ))}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="p-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <User2 /> Gebruiker
-                  <ChevronUp className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" className="w-[--radix-popper-anchor-width]">
-                <DropdownMenuItem>
-                  <Link href="/instellingen" className="flex items-center w-full">
-                    <Settings className="mr-2 h-4 w-4" /> Instellingen
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <LogoutButton />
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <LogoutButton />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   )
 }

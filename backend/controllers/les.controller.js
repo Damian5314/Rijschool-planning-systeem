@@ -1,116 +1,82 @@
 const Les = require("../models/les.model")
-const Student = require("../models/student.model")
-const Instructeur = require("../models/instructeur.model")
 
 // Get all lessons
 exports.getAllLessen = async (req, res) => {
   try {
-    const lessen = await Les.find()
-      .populate("student", "naam email") // Populate student with name and email
-      .populate("instructeur", "naam email") // Populate instructor with name and email
-    res.json(lessen)
-  } catch (err) {
-    res.status(500).json({ message: err.message })
+    const lessen = await Les.find().populate("student").populate("instructeur")
+    res.status(200).json(lessen)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 }
 
 // Get a single lesson by ID
 exports.getLesById = async (req, res) => {
   try {
-    const les = await Les.findById(req.params.id)
-      .populate("student", "naam email")
-      .populate("instructeur", "naam email")
+    const les = await Les.findById(req.params.id).populate("student").populate("instructeur")
     if (!les) {
-      return res.status(404).json({ message: "Les not found" })
+      return res.status(404).json({ message: "Les niet gevonden" })
     }
-    res.json(les)
-  } catch (err) {
-    res.status(500).json({ message: err.message })
+    res.status(200).json(les)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 }
 
 // Create a new lesson
 exports.createLes = async (req, res) => {
-  const { datum, tijd, duur, student, instructeur, type, opmerkingen } = req.body
-
-  // Basic validation for required fields
-  if (!datum || !tijd || !duur || !student || !instructeur) {
-    return res.status(400).json({ message: "Missing required fields: datum, tijd, duur, student, instructeur" })
-  }
-
-  // Check if student and instructor exist
-  const existingStudent = await Student.findById(student)
-  if (!existingStudent) {
-    return res.status(404).json({ message: "Student not found" })
-  }
-  const existingInstructeur = await Instructeur.findById(instructeur)
-  if (!existingInstructeur) {
-    return res.status(404).json({ message: "Instructeur not found" })
-  }
-
-  const newLes = new Les({
-    datum,
-    tijd,
-    duur,
-    student,
-    instructeur,
-    type,
-    opmerkingen,
+  const les = new Les({
+    datum: req.body.datum,
+    tijd: req.body.tijd,
+    duur: req.body.duur,
+    student: req.body.student,
+    instructeur: req.body.instructeur,
+    type: req.body.type,
+    opmerkingen: req.body.opmerkingen,
   })
 
   try {
-    const savedLes = await newLes.save()
-    // Populate the saved lesson to return full student/instructor objects
-    const populatedLes = await Les.findById(savedLes._id)
-      .populate("student", "naam email")
-      .populate("instructeur", "naam email")
-    res.status(201).json(populatedLes)
-  } catch (err) {
-    res.status(400).json({ message: err.message })
+    const newLes = await les.save()
+    res.status(201).json(newLes)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
   }
 }
 
 // Update a lesson
 exports.updateLes = async (req, res) => {
   try {
-    const { student, instructeur } = req.body
-
-    // Check if student and instructor exist if they are being updated
-    if (student) {
-      const existingStudent = await Student.findById(student)
-      if (!existingStudent) {
-        return res.status(404).json({ message: "Student not found" })
-      }
-    }
-    if (instructeur) {
-      const existingInstructeur = await Instructeur.findById(instructeur)
-      if (!existingInstructeur) {
-        return res.status(404).json({ message: "Instructeur not found" })
-      }
+    const les = await Les.findById(req.params.id)
+    if (!les) {
+      return res.status(404).json({ message: "Les niet gevonden" })
     }
 
-    const updatedLes = await Les.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
-      .populate("student", "naam email")
-      .populate("instructeur", "naam email")
+    les.datum = req.body.datum || les.datum
+    les.tijd = req.body.tijd || les.tijd
+    les.duur = req.body.duur || les.duur
+    les.student = req.body.student || les.student
+    les.instructeur = req.body.instructeur || les.instructeur
+    les.type = req.body.type || les.type
+    les.opmerkingen = req.body.opmerkingen || les.opmerkingen
 
-    if (!updatedLes) {
-      return res.status(404).json({ message: "Les not found" })
-    }
-    res.json(updatedLes)
-  } catch (err) {
-    res.status(400).json({ message: err.message })
+    const updatedLes = await les.save()
+    res.status(200).json(updatedLes)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
   }
 }
 
 // Delete a lesson
 exports.deleteLes = async (req, res) => {
   try {
-    const deletedLes = await Les.findByIdAndDelete(req.params.id)
-    if (!deletedLes) {
-      return res.status(404).json({ message: "Les not found" })
+    const les = await Les.findById(req.params.id)
+    if (!les) {
+      return res.status(404).json({ message: "Les niet gevonden" })
     }
-    res.json({ message: "Les deleted" })
-  } catch (err) {
-    res.status(500).json({ message: err.message })
+
+    await Les.deleteOne({ _id: req.params.id })
+    res.status(200).json({ message: "Les succesvol verwijderd" })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 }
