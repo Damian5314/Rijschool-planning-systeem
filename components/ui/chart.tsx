@@ -57,21 +57,22 @@ ChartContainer.displayName = "ChartContainer"
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
+
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-    React.ComponentProps<"div"> & {
-      hideLabel?: boolean
-      hideIndicator?: boolean
-      is
-      nameKey?: string
-      valueKey?: string
-    }
+  {
+    active?: boolean;
+    payload?: any[];
+    label?: React.ReactNode;
+    hideLabel?: boolean;
+    hideIndicator?: boolean;
+    nameKey?: string;
+    valueKey?: string;
+  } & React.ComponentProps<"div">
 >(
   (
     {
       className,
-      viewBox,
       active,
       payload,
       label,
@@ -83,13 +84,13 @@ const ChartTooltipContent = React.forwardRef<
     },
     ref
   ) => {
-    const { config } = useChart()
+    const { config } = useChart();
 
     if (!active || !payload?.length) {
-      return null
+      return null;
     }
 
-    const relevantPayload = payload.filter((item: any) => config[item.dataKey as keyof ChartConfig]?.label)
+    const relevantPayload = payload.filter((item: any) => config[item.dataKey as keyof ChartConfig]?.label);
 
     return (
       <div
@@ -101,5 +102,12 @@ const ChartTooltipContent = React.forwardRef<
         {...props}
       >
         {!hideLabel && label ? (
-          <div className="row-span-2 flex flex-col">
-            \
+          <div className="row-span-2 flex flex-col">{label}</div>
+        ) : null}
+        {/* Add more tooltip content here if needed */}
+      </div>
+    );
+  }
+);
+
+export { ChartContainer, ChartTooltip, ChartTooltipContent };
