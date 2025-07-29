@@ -2,29 +2,42 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Users, Car, CalendarDays } from "lucide-react"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import type { ChartConfig } from "@/components/ui/chart"
-import { Bar, Line } from "recharts"
-import { toast } from "@/components/ui/use-toast"
-import type { Student, Instructor, Lesson } from "@/lib/data"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { 
+  Users, 
+  Car, 
+  CalendarDays, 
+  TrendingUp, 
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  DollarSign
+} from "lucide-react"
+import { api } from "@/lib/api"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
+import Link from "next/link"
 
-const chartConfig = {
-  lessons: {
-    label: "Lessen",
-    color: "hsl(var(--primary))",
-  },
-  students: {
-    label: "Leerlingen",
-    color: "hsl(var(--secondary))",
-  },
-} satisfies ChartConfig
+interface DashboardStats {
+  totalStudents: number
+  activeStudents: number
+  totalInstructeurs: number
+  totalVehicles: number
+  todayLessons: number
+  weekLessons: number
+  pendingLessons: number
+  completedLessons: number
+  maintenanceAlerts: number
+}
 
 export default function DashboardPage() {
-  const [totalStudents, setTotalStudents] = useState(0)
-  const [totalInstructors, setTotalInstructors] = useState(0)
-  const [upcomingLessons, setUpcomingLessons] = useState(0)
-  const [chartData, setChartData] = useState<any[]>([])
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [todayLessons, setTodayLessons] = useState<any[]>([])
+  const [maintenanceAlerts, setMaintenanceAlerts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const { user, isAdmin, isInstructeur } = useAuth()
 
   useEffect(() => {
     fetchDashboardData()
@@ -32,119 +45,272 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch students
-      const studentsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`)
-      if (!studentsRes.ok) throw new Error("Failed to fetch students")
-      const studentsData: Student[] = await studentsRes.json()
-      setTotalStudents(studentsData.length)
+      setLoading(true)
+      
+      // Fetch all data in parallel
+      const [
+        studentsRes,
+        instructeursRes,
+        vehiclesRes,
+        todayLessonsRes,
+        weekLessonsRes,
+        maintenanceRes
+      ] = await Promise.all([
+        api.getStudents(),
+        api.getInstructeurs(),
+        api.getVehicles(),
+        api.getTodayLessons(),
+        api.getWeekLessons(),
+        api.getMaintenanceAlerts()
+      ])
 
-      // Fetch instructors
-      const instructorsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
-      if (!instructorsRes.ok) throw new Error("Failed to fetch instructors")
-      const instructorsData: Instructor[] = await instructorsRes.json()
-      setTotalInstructors(instructorsData.length)
+      // Process students data
+      const students = studentsRes.data || []
+      const activeStudents = students.filter(s => s.status === 'Actief')
 
-      // Fetch lessons and process for upcoming and chart data
-      const lessonsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons`)
-      if (!lessonsRes.ok) throw new Error("Failed to fetch lessons")
-      const lessonsData: Lesson[] = await lessonsRes.json()
+      // Process lessons data
+      const todayLessonsData = todayLessonsRes.data || []
+      const weekLessonsData = weekLessonsRes.data || []
+      const pendingLessons = weekLessonsData.filter(l => l.status === 'Gepland')
+      const completedLessons = weekLessonsData.filter(l => l.status === 'Voltooid')
 
-      const now = new Date()
-      const upcoming = lessonsData.filter((lesson) => new Date(`${lesson.date}T${lesson.time}:00`) > now).length
-      setUpcomingLessons(upcoming)
-
-      // Aggregate data for chart (e.g., lessons per month)
-      const monthlyData: { [key: string]: { month: string; lessons: number; students: number } } = {}
-      lessonsData.forEach((lesson) => {
-        const lessonDate = new Date(lesson.date)
-        const monthYear = `${lessonDate.getFullYear()}-${(lessonDate.getMonth() + 1).toString().padStart(2, "0")}`
-        if (!monthlyData[monthYear]) {
-          monthlyData[monthYear] = { month: format(lessonDate, "MMM yyyy"), lessons: 0, students: 0 }
-        }
-        monthlyData[monthYear].lessons += 1
+      // Set dashboard stats
+      setStats({
+        totalStudents: students.length,
+        activeStudents: activeStudents.length,
+        totalInstructeurs: instructeursRes.data?.length || 0,
+        totalVehicles: vehiclesRes.data?.length || 0,
+        todayLessons: todayLessonsData.length,
+        weekLessons: weekLessonsData.length,
+        pendingLessons: pendingLessons.length,
+        completedLessons: completedLessons.length,
+        maintenanceAlerts: maintenanceRes.data?.length || 0
       })
 
-      studentsData.forEach((student) => {
-        const startDate = new Date(student.startDate)
-        const monthYear = `${startDate.getFullYear()}-${(startDate.getMonth() + 1).toString().padStart(2, "0")}`
-        if (!monthlyData[monthYear]) {
-          monthlyData[monthYear] = { month: format(startDate, "MMM yyyy"), lessons: 0, students: 0 }
-        }
-        monthlyData[monthYear].students += 1
-      })
+      setTodayLessons(todayLessonsData)
+      setMaintenanceAlerts(maintenanceRes.data || [])
 
-      const sortedChartData = Object.values(monthlyData).sort((a, b) => {
-        const [monthA, yearA] = a.month.split(" ")
-        const [monthB, yearB] = b.month.split(" ")
-        const dateA = new Date(`${monthA} 1, ${yearA}`)
-        const dateB = new Date(`${monthB} 1, ${yearB}`)
-        return dateA.getTime() - dateB.getTime()
-      })
-
-      setChartData(sortedChartData)
     } catch (error: any) {
-      console.error("Fout bij het ophalen van dashboard data:", error)
-      toast({
-        title: "Fout",
-        description: `Kon dashboard data niet ophalen: ${error.message}`,
-        variant: "destructive",
-      })
+      console.error('Dashboard data fetch error:', error)
+      toast.error('Kon dashboard gegevens niet laden')
+    } finally {
+      setLoading(false)
     }
   }
 
-  function format(date: Date, fmt: string) {
-    // Simple format for chart labels, replace with date-fns if needed
-    const options: Intl.DateTimeFormatOptions = { month: "short", year: "numeric" }
-    return new Intl.DateTimeFormat("nl-NL", options).format(date)
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'Gepland': return 'default'
+      case 'Bevestigd': return 'secondary'
+      case 'Voltooid': return 'default'
+      case 'Geannuleerd': return 'destructive'
+      default: return 'default'
+    }
+  }
+
+  const formatTime = (time: string) => {
+    return time.slice(0, 5) // HH:MM format
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-1" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-      <h1 className="text-lg font-semibold md:text-2xl">Dashboard</h1>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="text-muted-foreground">Welkom terug, {user?.naam}</p>
+        </div>
+        <Button asChild>
+          <Link href="/planning">Naar Planning</Link>
+        </Button>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totaal Leerlingen</CardTitle>
+            <CardTitle className="text-sm font-medium">Leerlingen</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStudents}</div>
-            <p className="text-xs text-muted-foreground">Actieve en afgestudeerde</p>
+            <div className="text-2xl font-bold">{stats?.activeStudents}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.totalStudents} totaal
+            </p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totaal Instructeurs</CardTitle>
+            <CardTitle className="text-sm font-medium">Instructeurs</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.totalInstructeurs}</div>
+            <p className="text-xs text-muted-foreground">Beschikbaar</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Voertuigen</CardTitle>
             <Car className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalInstructors}</div>
-            <p className="text-xs text-muted-foreground">Beschikbare instructeurs</p>
+            <div className="text-2xl font-bold">{stats?.totalVehicles}</div>
+            <p className="text-xs text-muted-foreground">In vloot</p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aankomende Lessen</CardTitle>
+            <CardTitle className="text-sm font-medium">Vandaag</CardTitle>
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{upcomingLessons}</div>
-            <p className="text-xs text-muted-foreground">Gepland voor de komende 7 dagen</p>
+            <div className="text-2xl font-bold">{stats?.todayLessons}</div>
+            <p className="text-xs text-muted-foreground">Geplande lessen</p>
           </CardContent>
         </Card>
       </div>
-      <Card className="flex-1">
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Today's Lessons */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Lessen Vandaag
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {todayLessons.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Geen lessen vandaag</p>
+              ) : (
+                todayLessons.slice(0, 5).map((lesson: any) => (
+                  <div key={lesson.id} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium">{lesson.student_naam}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatTime(lesson.tijd)} - {lesson.instructeur_naam}
+                      </p>
+                    </div>
+                    <Badge variant={getStatusBadgeColor(lesson.status)}>
+                      {lesson.status}
+                    </Badge>
+                  </div>
+                ))
+              )}
+              {todayLessons.length > 5 && (
+                <Button variant="outline" size="sm" asChild className="w-full">
+                  <Link href="/planning">Alle lessen bekijken</Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Maintenance Alerts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Onderhoud Meldingen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {maintenanceAlerts.length === 0 ? (
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="text-sm">Alle voertuigen zijn up-to-date</span>
+                </div>
+              ) : (
+                maintenanceAlerts.slice(0, 5).map((alert: any) => (
+                  <div key={alert.id} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium">{alert.merk} {alert.model}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {alert.kenteken} - {alert.alert_type}
+                      </p>
+                    </div>
+                    <Badge variant="destructive">
+                      Urgent
+                    </Badge>
+                  </div>
+                ))
+              )}
+              {maintenanceAlerts.length > 5 && (
+                <Button variant="outline" size="sm" asChild className="w-full">
+                  <Link href="/voertuigen">Alle meldingen bekijken</Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <Card>
         <CardHeader>
-          <CardTitle>Overzicht Lessen & Leerlingen</CardTitle>
+          <CardTitle>Snelle Acties</CardTitle>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-            <BarChart accessibilityLayer data={chartData}>
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="lessons" fill="var(--color-lessons)" radius={4} />
-              <Line type="monotone" dataKey="students" stroke="var(--color-students)" />
-            </BarChart>
-          </ChartContainer>
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+            <Button asChild variant="outline" className="justify-start">
+              <Link href="/leerlingen?action=new">
+                <Users className="mr-2 h-4 w-4" />
+                Nieuwe Leerling
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="justify-start">
+              <Link href="/planning?action=new">
+                <CalendarDays className="mr-2 h-4 w-4" />
+                Nieuwe Les
+              </Link>
+            </Button>
+            {isAdmin && (
+              <>
+                <Button asChild variant="outline" className="justify-start">
+                  <Link href="/instructeurs?action=new">
+                    <Users className="mr-2 h-4 w-4" />
+                    Nieuwe Instructeur
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="justify-start">
+                  <Link href="/voertuigen?action=new">
+                    <Car className="mr-2 h-4 w-4" />
+                    Nieuw Voertuig
+                  </Link>
+                </Button>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
