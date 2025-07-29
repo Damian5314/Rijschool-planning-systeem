@@ -455,11 +455,256 @@ const getMaintenanceAlerts = async (req, res) => {
   }
 }
 
+// Get available vehicles now
+const getAvailableVehicles = async (req, res) => {
+  try {
+    const { datum, tijd } = req.query
+    
+    if (!datum || !tijd) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Datum en tijd zijn verplicht!" 
+      })
+    }
+    
+    // Get vehicles that are not booked at the specified time
+    const conflictQuery = `
+      SELECT vehicle_id FROM lessons 
+      WHERE datum = $1 AND tijd = $2 
+      AND vehicle_id IS NOT NULL
+      AND status NOT IN ('Geannuleerd')
+    `
+    const conflictResult = await pool.query(conflictQuery, [datum, tijd])
+    const unavailableIds = conflictResult.rows.map(row => row.vehicle_id)
+    
+    let availableQuery = `
+      SELECT v.*, i.naam as instructeur_naam
+      FROM vehicles v
+      LEFT JOIN instructeurs i ON v.instructeur_id = i.id
+      WHERE v.status = 'beschikbaar'
+    `
+    
+    if (unavailableIds.length > 0) {
+      const placeholders = unavailableIds.map((_, index) => `$${index + 3}`).join(',')
+      availableQuery += ` AND v.id NOT IN (${placeholders})`
+      const result = await pool.query(availableQuery, [datum, tijd, ...unavailableIds])
+      
+      res.json({
+        success: true,
+        data: result.rows
+      })
+    } else {
+      const result = await pool.query(availableQuery)
+      
+      res.json({
+        success: true,
+        data: result.rows
+      })
+    }
+    
+  } catch (error) {
+    console.error("Get available vehicles error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen beschikbare voertuigen" 
+    })
+  }
+}
+
+// Get vehicle planning
+const getVehiclePlanning = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { startDatum, eindDatum } = req.query
+    
+    let dateFilter = ''
+    let queryParams = [id]
+    let paramCount = 1
+    
+    if (startDatum) {
+      paramCount++
+      dateFilter += ` AND l.datum >= $${paramCount}`
+      queryParams.push(startDatum)
+    }
+    
+    if (eindDatum) {
+      paramCount++
+      dateFilter += ` AND l.datum <= $${paramCount}`
+      queryParams.push(eindDatum)
+    }
+    
+    if (!startDatum && !eindDatum) {
+      // Default to next 30 days
+      dateFilter = ' AND l.datum >= CURRENT_DATE AND l.datum <= CURRENT_DATE + INTERVAL \'30 days\''
+    }
+    
+    const planningQuery = `
+      SELECT 
+        l.*,
+        s.naam as student_naam,
+        s.telefoon as student_telefoon,
+        i.naam as instructeur_naam
+      FROM lessons l
+      JOIN students s ON l.student_id = s.id
+      JOIN instructeurs i ON l.instructeur_id = i.id
+      WHERE l.vehicle_id = $1 ${dateFilter}
+      ORDER BY l.datum, l.tijd
+    `
+    
+    const result = await pool.query(planningQuery, queryParams)
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length
+    })
+    
+  } catch (error) {
+    console.error("Get vehicle planning error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen voertuig planning" 
+    })
+  }
+}
+
+// Update vehicle maintenance
+const updateVehicleMaintenance = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { laatste_onderhoud, volgende_onderhoud, apk_datum, kilometerstand } = req.body
+    
+    const updateQuery = `
+      UPDATE vehicles 
+      SET 
+        laatste_onderhoud = COALESCE($1, laatste_onderhoud),
+        volgende_onderhoud = COALESCE($2, volgende_onderhoud), 
+        apk_datum = COALESCE($3, apk_datum),
+        kilometerstand = COALESCE($4, kilometerstand),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `
+    
+    const result = await pool.query(updateQuery, [laatste_onderhoud, volgende_onderhoud, apk_datum, kilometerstand, id])
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Voertuig niet gevonden!" 
+      })
+    }
+    
+    res.json({
+      success: true,
+      message: "Voertuig onderhoud succesvol bijgewerkt!",
+      data: result.rows[0]
+    })
+    
+  } catch (error) {
+    console.error("Update vehicle maintenance error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij bijwerken voertuig onderhoud" 
+    })
+  }
+}
+
+// Update vehicle status
+const updateVehicleStatus = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+    
+    if (!status) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Status is verplicht!" 
+      })
+    }
+    
+    const validStatuses = ['beschikbaar', 'onderhoud', 'defect']
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Ongeldige status!" 
+      })
+    }
+    
+    const updateQuery = `
+      UPDATE vehicles 
+      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `
+    
+    const result = await pool.query(updateQuery, [status, id])
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Voertuig niet gevonden!" 
+      })
+    }
+    
+    res.json({
+      success: true,
+      message: "Voertuig status succesvol bijgewerkt!",
+      data: result.rows[0]
+    })
+    
+  } catch (error) {
+    console.error("Update vehicle status error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij bijwerken voertuig status" 
+    })
+  }
+}
+
+// Add maintenance record (placeholder)
+const addMaintenanceRecord = async (req, res) => {
+  try {
+    res.status(501).json({
+      success: false,
+      message: "Onderhoud historie functionaliteit nog niet geïmplementeerd"
+    })
+  } catch (error) {
+    console.error("Add maintenance record error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij toevoegen onderhoudsrecord" 
+    })
+  }
+}
+
+// Get maintenance history (placeholder)
+const getMaintenanceHistory = async (req, res) => {
+  try {
+    res.status(501).json({
+      success: false,
+      message: "Onderhoud historie functionaliteit nog niet geïmplementeerd"
+    })
+  } catch (error) {
+    console.error("Get maintenance history error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen onderhoud historie" 
+    })
+  }
+}
+
 module.exports = {
   getAllVehicles,
   getVehicleById,
   createVehicle,
   updateVehicle,
   deleteVehicle,
-  getMaintenanceAlerts
+  getMaintenanceAlerts,
+  getAvailableVehicles,
+  getVehiclePlanning,
+  updateVehicleMaintenance,
+  updateVehicleStatus,
+  addMaintenanceRecord,
+  getMaintenanceHistory
 }
