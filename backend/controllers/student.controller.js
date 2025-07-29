@@ -481,11 +481,120 @@ const addTransactie = async (req, res) => {
   }
 }
 
+// Get student lessons
+const getStudentLessons = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const query = `
+      SELECT 
+        l.*,
+        i.naam as instructeur_naam,
+        v.merk, v.model, v.kenteken
+      FROM lessons l
+      LEFT JOIN instructeurs i ON l.instructeur_id = i.id
+      LEFT JOIN vehicles v ON l.vehicle_id = v.id
+      WHERE l.student_id = $1
+      ORDER BY l.datum DESC, l.tijd DESC
+    `
+    
+    const result = await pool.query(query, [id])
+    
+    res.json({
+      success: true,
+      data: result.rows
+    })
+    
+  } catch (error) {
+    console.error("Get student lessons error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen lessen" 
+    })
+  }
+}
+
+// Get student financial info
+const getStudentFinancieel = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const transactionsQuery = `
+      SELECT * FROM transacties 
+      WHERE student_id = $1 
+      ORDER BY datum DESC, created_at DESC
+    `
+    
+    const studentQuery = `
+      SELECT tegoed, openstaand_bedrag, laatste_betaling 
+      FROM students 
+      WHERE id = $1
+    `
+    
+    const [transactions, studentInfo] = await Promise.all([
+      pool.query(transactionsQuery, [id]),
+      pool.query(studentQuery, [id])
+    ])
+    
+    if (studentInfo.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Student niet gevonden!" 
+      })
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        student: studentInfo.rows[0],
+        transacties: transactions.rows
+      }
+    })
+    
+  } catch (error) {
+    console.error("Get student financial error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen financiële gegevens" 
+    })
+  }
+}
+
+// Get student exams
+const getStudentExamens = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const query = `
+      SELECT * FROM examens 
+      WHERE student_id = $1 
+      ORDER BY datum DESC
+    `
+    
+    const result = await pool.query(query, [id])
+    
+    res.json({
+      success: true,
+      data: result.rows
+    })
+    
+  } catch (error) {
+    console.error("Get student exams error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen examens" 
+    })
+  }
+}
+
 module.exports = {
   getAllStudents,
   getStudentById,
   createStudent,
   updateStudent,
   deleteStudent,
-  addTransactie
+  addTransaction: addTransactie,
+  getStudentLessons,
+  getStudentFinancieel,
+  getStudentExamens
 }
