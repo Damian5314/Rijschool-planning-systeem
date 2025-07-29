@@ -330,11 +330,107 @@ const getInstructeurPlanning = async (req, res) => {
   }
 }
 
+// Get instructeur students
+const getInstructeurStudents = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const query = `
+      SELECT 
+        s.*,
+        (SELECT COUNT(*) FROM lessons WHERE student_id = s.id) as totaal_lessen,
+        (SELECT COUNT(*) FROM lessons WHERE student_id = s.id AND datum >= CURRENT_DATE) as komende_lessen
+      FROM students s
+      WHERE s.instructeur_id = $1
+      ORDER BY s.naam
+    `
+    
+    const result = await pool.query(query, [id])
+    
+    res.json({
+      success: true,
+      data: result.rows
+    })
+    
+  } catch (error) {
+    console.error("Get instructeur students error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen studenten" 
+    })
+  }
+}
+
+// Get instructeur vehicles
+const getInstructeurVehicles = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const query = `
+      SELECT 
+        v.*,
+        (SELECT COUNT(*) FROM lessons WHERE vehicle_id = v.id) as totaal_lessen,
+        (SELECT COUNT(*) FROM lessons WHERE vehicle_id = v.id AND datum >= CURRENT_DATE) as komende_lessen
+      FROM vehicles v
+      WHERE v.instructeur_id = $1
+      ORDER BY v.merk, v.model
+    `
+    
+    const result = await pool.query(query, [id])
+    
+    res.json({
+      success: true,
+      data: result.rows
+    })
+    
+  } catch (error) {
+    console.error("Get instructeur vehicles error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen voertuigen" 
+    })
+  }
+}
+
+// Get instructeur stats
+const getInstructeurStats = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const statsQuery = `
+      SELECT 
+        (SELECT COUNT(*) FROM students WHERE instructeur_id = $1) as totaal_studenten,
+        (SELECT COUNT(*) FROM students WHERE instructeur_id = $1 AND status = 'Actief') as actieve_studenten,
+        (SELECT COUNT(*) FROM lessons WHERE instructeur_id = $1) as totaal_lessen,
+        (SELECT COUNT(*) FROM lessons WHERE instructeur_id = $1 AND datum >= CURRENT_DATE) as komende_lessen,
+        (SELECT COUNT(*) FROM lessons WHERE instructeur_id = $1 AND status = 'Voltooid') as voltooide_lessen,
+        (SELECT COUNT(*) FROM vehicles WHERE instructeur_id = $1) as toegewezen_voertuigen
+    `
+    
+    const result = await pool.query(statsQuery, [id])
+    
+    res.json({
+      success: true,
+      data: result.rows[0]
+    })
+    
+  } catch (error) {
+    console.error("Get instructeur stats error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen statistieken" 
+    })
+  }
+}
+
 module.exports = {
   getAllInstructeurs,
   getInstructeurById,
   createInstructeur,
   updateInstructeur,
   deleteInstructeur,
-  getInstructeurPlanning
+  getInstructeurPlanning,
+  getInstructeurStudents,
+  getInstructeurVehicles,
+  getInstructeurStats
 }
