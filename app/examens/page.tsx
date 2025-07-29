@@ -1,385 +1,185 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2, CalendarIcon } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Edit, Calendar, Award, Clock, User, CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { nl } from "date-fns/locale"
+import { toast } from "@/components/ui/use-toast"
+import type { Exam } from "@/lib/data" // Assuming Exam interface is defined here
 
-export default function Examens() {
-  const [searchTerm, setSearchTerm] = useState("")
+export default function ExamensPage() {
+  const [exams, setExams] = useState<Exam[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedTab, setSelectedTab] = useState<"gepland" | "afgerond">("gepland")
+  const [currentExam, setCurrentExam] = useState<Exam | null>(null)
+  const [date, setDate] = useState<Date | undefined>(undefined)
 
-  const [examens] = useState([
-    {
-      id: 1,
-      leerling: "Tom Jansen",
-      instructeur: "Jan Bakker",
-      datum: "2024-01-15",
-      tijd: "10:30",
-      transmissie: "Schakel",
-      type: "Praktijkexamen",
-      status: "Gepland",
-      locatie: "CBR Centrum Barendrecht",
-      opmerkingen: "Eerste examenpoging",
-    },
-    {
-      id: 2,
-      leerling: "Sophie Willems",
-      instructeur: "Lisa de Vries",
-      datum: "2024-01-12",
-      tijd: "14:00",
-      transmissie: "Automaat",
-      type: "Praktijkexamen",
-      status: "Geslaagd",
-      locatie: "CBR Centrum Barendrecht",
-      opmerkingen: "Uitstekend gereden, geen fouten",
-      resultaat: "Geslaagd",
-      punten: 0,
-    },
-    {
-      id: 3,
-      leerling: "David Smit",
-      instructeur: "Mark Peters",
-      datum: "2024-01-10",
-      tijd: "09:00",
-      transmissie: "Schakel",
-      type: "Praktijkexamen",
-      status: "Gezakt",
-      locatie: "CBR Centrum Rotterdam",
-      opmerkingen: "Problemen met parkeren en voorrang",
-      resultaat: "Gezakt",
-      punten: 8,
-    },
-    {
-      id: 4,
-      leerling: "Emma van der Berg",
-      instructeur: "Jan Bakker",
-      datum: "2024-01-18",
-      tijd: "11:00",
-      transmissie: "Automaat",
-      type: "Praktijkexamen",
-      status: "Gepland",
-      locatie: "CBR Centrum Barendrecht",
-      opmerkingen: "Tweede examenpoging",
-    },
-    {
-      id: 5,
-      leerling: "Lisa Bakker",
-      instructeur: "Lisa de Vries",
-      datum: "2024-01-08",
-      tijd: "15:30",
-      transmissie: "Automaat",
-      type: "Praktijkexamen",
-      status: "Geslaagd",
-      locatie: "CBR Centrum Rotterdam",
-      opmerkingen: "Zeer zelfverzekerd gereden",
-      resultaat: "Geslaagd",
-      punten: 2,
-    },
-  ])
+  // Mock data for students (replace with actual fetch later)
+  const mockStudents = [
+    { id: "1", name: "Emma van der Berg" },
+    { id: "2", name: "Lucas de Vries" },
+    { id: "3", name: "Sophie Willems" },
+  ]
 
-  const geplandeExamens = examens.filter((e) => e.status === "Gepland")
-  const afgerondeExamens = examens.filter((e) => e.status !== "Gepland")
+  useEffect(() => {
+    // Mock fetching exams
+    const fetchedExams: Exam[] = [
+      {
+        id: "e1",
+        studentId: "1",
+        type: "practical",
+        date: "2024-08-10",
+        time: "10:00",
+        location: "CBR Rotterdam",
+        status: "scheduled",
+        attempts: 1,
+      },
+      {
+        id: "e2",
+        studentId: "2",
+        type: "theory",
+        date: "2024-07-25",
+        time: "14:00",
+        location: "Online",
+        status: "passed",
+        attempts: 1,
+      },
+      {
+        id: "e3",
+        studentId: "3",
+        type: "practical",
+        date: "2024-09-01",
+        time: "09:30",
+        location: "CBR Utrecht",
+        status: "failed",
+        attempts: 2,
+      },
+    ]
+    setExams(fetchedExams)
+  }, [])
 
-  const currentExamens = selectedTab === "gepland" ? geplandeExamens : afgerondeExamens
-
-  const filteredExamens = currentExamens.filter(
-    (examen) =>
-      examen.leerling.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      examen.instructeur.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Gepland":
-        return "bg-blue-100 text-blue-800"
-      case "Geslaagd":
-        return "bg-green-100 text-green-800"
-      case "Gezakt":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
+  const handleAddExam = () => {
+    setCurrentExam(null)
+    setDate(undefined)
+    setIsDialogOpen(true)
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Gepland":
-        return <AlertCircle className="h-4 w-4" />
-      case "Geslaagd":
-        return <CheckCircle className="h-4 w-4" />
-      case "Gezakt":
-        return <XCircle className="h-4 w-4" />
-      default:
-        return <Clock className="h-4 w-4" />
-    }
+  const handleEditExam = (exam: Exam) => {
+    setCurrentExam(exam)
+    setDate(new Date(exam.date))
+    setIsDialogOpen(true)
   }
 
-  const slagingspercentage = Math.round(
-    (afgerondeExamens.filter((e) => e.status === "Geslaagd").length / afgerondeExamens.length) * 100,
-  )
+  const handleDeleteExam = (id: string) => {
+    setExams(exams.filter((exam) => exam.id !== id))
+    toast({
+      title: "Examen verwijderd",
+      description: `Examen met ID ${id} is succesvol verwijderd.`,
+    })
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const formData = new FormData(e.target as HTMLFormElement)
+    const newExam: Exam = {
+      id: currentExam?.id || `e${exams.length + 1}`,
+      studentId: formData.get("studentId") as string,
+      type: formData.get("type") as "theory" | "practical",
+      date: date ? format(date, "yyyy-MM-dd") : "",
+      time: formData.get("time") as string,
+      location: formData.get("location") as string,
+      status: formData.get("status") as "scheduled" | "passed" | "failed",
+      attempts: Number.parseInt(formData.get("attempts") as string) || 1,
+    }
+
+    if (currentExam) {
+      setExams(exams.map((exam) => (exam.id === newExam.id ? newExam : exam)))
+      toast({
+        title: "Examen bijgewerkt",
+        description: `Examen voor ${mockStudents.find((s) => s.id === newExam.studentId)?.name} is succesvol bijgewerkt.`,
+      })
+    } else {
+      setExams([...exams, newExam])
+      toast({
+        title: "Examen toegevoegd",
+        description: `Nieuw examen voor ${mockStudents.find((s) => s.id === newExam.studentId)?.name} is succesvol toegevoegd.`,
+      })
+    }
+    setIsDialogOpen(false)
+  }
+
+  const getStudentName = (studentId: string) => {
+    return mockStudents.find((s) => s.id === studentId)?.name || "Onbekende student"
+  }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Examens</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Examen Inplannen
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Nieuw Examen Inplannen</DialogTitle>
-              <DialogDescription>Plan een praktijkexamen in voor een leerling.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="leerling" className="text-right">
-                  Leerling
-                </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer leerling" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="emma">Emma van der Berg</SelectItem>
-                    <SelectItem value="tom">Tom Jansen</SelectItem>
-                    <SelectItem value="sophie">Sophie Willems</SelectItem>
-                    <SelectItem value="david">David Smit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="instructeur" className="text-right">
-                  Instructeur
-                </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer instructeur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="jan">Jan Bakker</SelectItem>
-                    <SelectItem value="lisa">Lisa de Vries</SelectItem>
-                    <SelectItem value="mark">Mark Peters</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="datum" className="text-right">
-                  Datum
-                </Label>
-                <Input id="datum" type="date" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="tijd" className="text-right">
-                  Tijd
-                </Label>
-                <Input id="tijd" type="time" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="locatie" className="text-right">
-                  Locatie
-                </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer CBR locatie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="amsterdam">CBR Centrum Rotterdam</SelectItem>
-                    <SelectItem value="haarlem">CBR Centrum Barendrecht</SelectItem>
-                    <SelectItem value="zaandam">CBR Centrum Rijswijk</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="opmerkingen" className="text-right">
-                  Opmerkingen
-                </Label>
-                <Textarea id="opmerkingen" className="col-span-3" rows={3} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" onClick={() => setIsDialogOpen(false)}>
-                Examen Inplannen
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Statistieken Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Geplande Examens</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{geplandeExamens.length}</div>
-            <p className="text-xs text-muted-foreground">Komende examens</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Slagingspercentage</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{slagingspercentage}%</div>
-            <p className="text-xs text-muted-foreground">
-              {afgerondeExamens.filter((e) => e.status === "Geslaagd").length} van {afgerondeExamens.length} geslaagd
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Deze Week</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {examens.filter((e) => e.datum >= "2024-01-08" && e.datum <= "2024-01-14").length}
-            </div>
-            <p className="text-xs text-muted-foreground">Examens deze week</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gemiddelde Punten</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.round(afgerondeExamens.reduce((acc, e) => acc + (e.punten || 0), 0) / afgerondeExamens.length)}
-            </div>
-            <p className="text-xs text-muted-foreground">Foutpunten per examen</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
-        <Button
-          variant={selectedTab === "gepland" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setSelectedTab("gepland")}
-        >
-          Geplande Examens ({geplandeExamens.length})
-        </Button>
-        <Button
-          variant={selectedTab === "afgerond" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setSelectedTab("afgerond")}
-        >
-          Afgeronde Examens ({afgerondeExamens.length})
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Examens</h1>
+        <Button className="ml-auto" onClick={handleAddExam}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Nieuw Examen
         </Button>
       </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>{selectedTab === "gepland" ? "Geplande Examens" : "Afgeronde Examens"}</CardTitle>
-          <CardDescription>
-            {selectedTab === "gepland"
-              ? "Overzicht van alle geplande praktijkexamens"
-              : "Resultaten van afgeronde praktijkexamens"}
-          </CardDescription>
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Zoek examens..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
+          <CardTitle>Overzicht Examens</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Leerling</TableHead>
-                <TableHead>Instructeur</TableHead>
-                <TableHead>Datum & Tijd</TableHead>
-                <TableHead>Transmissie</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Datum</TableHead>
+                <TableHead>Tijd</TableHead>
                 <TableHead>Locatie</TableHead>
                 <TableHead>Status</TableHead>
-                {selectedTab === "afgerond" && <TableHead>Resultaat</TableHead>}
-                <TableHead>Acties</TableHead>
+                <TableHead>Pogingen</TableHead>
+                <TableHead className="text-right">Acties</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredExamens.map((examen) => (
-                <TableRow key={examen.id}>
-                  <TableCell className="font-medium">{examen.leerling}</TableCell>
-                  <TableCell>{examen.instructeur}</TableCell>
+              {exams.map((exam) => (
+                <TableRow key={exam.id}>
+                  <TableCell>{getStudentName(exam.studentId)}</TableCell>
+                  <TableCell>{exam.type === "practical" ? "Praktijk" : "Theorie"}</TableCell>
+                  <TableCell>{format(new Date(exam.date), "dd-MM-yyyy", { locale: nl })}</TableCell>
+                  <TableCell>{exam.time}</TableCell>
+                  <TableCell>{exam.location}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col space-y-1">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-3 w-3" />
-                        <span className="text-sm">{new Date(examen.datum).toLocaleDateString("nl-NL")}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span className="text-sm">{examen.tijd}</span>
-                      </div>
-                    </div>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        exam.status === "scheduled"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                          : exam.status === "passed"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      }`}
+                    >
+                      {exam.status === "scheduled" ? "Gepland" : exam.status === "passed" ? "Geslaagd" : "Gezakt"}
+                    </span>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={examen.transmissie === "Automaat" ? "default" : "secondary"}>
-                      {examen.transmissie}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{examen.locatie}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(examen.status)}
-                      <Badge className={getStatusColor(examen.status)}>{examen.status}</Badge>
-                    </div>
-                  </TableCell>
-                  {selectedTab === "afgerond" && (
-                    <TableCell>
-                      {examen.punten !== undefined && (
-                        <div className="text-sm">
-                          <div className={examen.status === "Geslaagd" ? "text-green-600" : "text-red-600"}>
-                            {examen.punten} foutpunten
-                          </div>
-                        </div>
-                      )}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {selectedTab === "gepland" && examen.status === "Gepland" && (
-                        <Button variant="ghost" size="sm">
-                          <Award className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                  <TableCell>{exam.attempts}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditExam(exam)} className="mr-2">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Bewerken</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteExam(exam.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Verwijderen</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -387,6 +187,123 @@ export default function Examens() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{currentExam ? "Examen Bewerken" : "Nieuw Examen Toevoegen"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="studentId" className="text-right">
+                Student
+              </Label>
+              <Select name="studentId" defaultValue={currentExam?.studentId} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer student" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mockStudents.map((student) => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="type" className="text-right">
+                Type
+              </Label>
+              <Select name="type" defaultValue={currentExam?.type} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="practical">Praktijk</SelectItem>
+                  <SelectItem value="theory">Theorie</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="date" className="text-right">
+                Datum
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={`col-span-3 justify-start text-left font-normal ${!date && "text-muted-foreground"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP", { locale: nl }) : <span>Kies een datum</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus locale={nl} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="time" className="text-right">
+                Tijd
+              </Label>
+              <Input
+                id="time"
+                name="time"
+                type="time"
+                defaultValue={currentExam?.time}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="location" className="text-right">
+                Locatie
+              </Label>
+              <Input
+                id="location"
+                name="location"
+                defaultValue={currentExam?.location}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select name="status" defaultValue={currentExam?.status} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Gepland</SelectItem>
+                  <SelectItem value="passed">Geslaagd</SelectItem>
+                  <SelectItem value="failed">Gezakt</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="attempts" className="text-right">
+                Pogingen
+              </Label>
+              <Input
+                id="attempts"
+                name="attempts"
+                type="number"
+                defaultValue={currentExam?.attempts || 1}
+                className="col-span-3"
+                min="1"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit">{currentExam ? "Opslaan" : "Toevoegen"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

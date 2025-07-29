@@ -1,289 +1,191 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, Edit, Trash2, Phone, Mail, Calendar, Users, Award } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import type { Instructor } from "@/lib/data"
 
-export default function Instructeurs() {
-  const [searchTerm, setSearchTerm] = useState("")
+export default function InstructeursPage() {
+  const [instructors, setInstructors] = useState<Instructor[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [currentInstructor, setCurrentInstructor] = useState<Instructor | null>(null)
 
-  const [instructeurs] = useState([
-    {
-      id: 1,
-      naam: "Jan Bakker",
-      email: "jan.bakker@rijschool.nl",
-      telefoon: "06-11111111",
-      specialisatie: "Automaat & Schakel",
-      status: "Actief",
-      leerlingen: 15,
-      slagingspercentage: 85,
-      ervaring: "8 jaar",
-      beschikbaarheid: "Ma-Vr 8:00-18:00",
-      startdatum: "2016-03-15",
-    },
-    {
-      id: 2,
-      naam: "Lisa de Vries",
-      email: "lisa.devries@rijschool.nl",
-      telefoon: "06-22222222",
-      specialisatie: "Automaat",
-      status: "Actief",
-      leerlingen: 12,
-      slagingspercentage: 75,
-      ervaring: "5 jaar",
-      beschikbaarheid: "Di-Za 9:00-17:00",
-      startdatum: "2019-09-01",
-    },
-    {
-      id: 3,
-      naam: "Mark Peters",
-      email: "mark.peters@rijschool.nl",
-      telefoon: "06-33333333",
-      specialisatie: "Schakel",
-      status: "Actief",
-      leerlingen: 11,
-      slagingspercentage: 73,
-      ervaring: "3 jaar",
-      beschikbaarheid: "Ma-Do 10:00-19:00",
-      startdatum: "2021-01-10",
-    },
-    {
-      id: 4,
-      naam: "Sarah Jansen",
-      email: "sarah.jansen@rijschool.nl",
-      telefoon: "06-44444444",
-      specialisatie: "Automaat & Schakel",
-      status: "Verlof",
-      leerlingen: 0,
-      slagingspercentage: 80,
-      ervaring: "6 jaar",
-      beschikbaarheid: "Tijdelijk niet beschikbaar",
-      startdatum: "2018-05-20",
-    },
-  ])
+  useEffect(() => {
+    fetchInstructors()
+  }, [])
 
-  const filteredInstructeurs = instructeurs.filter(
-    (instructeur) =>
-      instructeur.naam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      instructeur.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Actief":
-        return "bg-green-100 text-green-800"
-      case "Verlof":
-        return "bg-yellow-100 text-yellow-800"
-      case "Inactief":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  const fetchInstructors = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setInstructors(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          specialization: item.rijbewijsType,
+          experience: 0, // Not in model, default to 0
+          rating: 0, // Not in model, default to 0
+          availability: [], // Not in model, default to empty
+          students: 0, // Not in model, default to 0
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van instructeurs:", error)
+      toast({
+        title: "Fout",
+        description: "Kon instructeurs niet ophalen.",
+        variant: "destructive",
+      })
     }
   }
 
-  const getSpecialisatieColor = (specialisatie: string) => {
-    if (specialisatie.includes("&")) return "bg-purple-100 text-purple-800"
-    if (specialisatie === "Automaat") return "bg-blue-100 text-blue-800"
-    return "bg-orange-100 text-orange-800"
+  const handleAddInstructor = () => {
+    setCurrentInstructor(null)
+    setIsDialogOpen(true)
+  }
+
+  const handleEditInstructor = (instructor: Instructor) => {
+    setCurrentInstructor(instructor)
+    setIsDialogOpen(true)
+  }
+
+  const handleDeleteInstructor = async (id: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs/${id}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      setInstructors(instructors.filter((instructor) => instructor.id !== id))
+      toast({
+        title: "Instructeur verwijderd",
+        description: `Instructeur is succesvol verwijderd.`,
+      })
+    } catch (error) {
+      console.error("Fout bij het verwijderen van instructeur:", error)
+      toast({
+        title: "Fout",
+        description: "Kon instructeur niet verwijderen.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const formData = new FormData(e.target as HTMLFormElement)
+    const instructorData = {
+      naam: formData.get("name") as string,
+      email: formData.get("email") as string,
+      telefoon: formData.get("phone") as string,
+      rijbewijsType: formData.getAll("specialization") as string[], // Assuming multi-select or comma-separated
+    }
+
+    try {
+      let response
+      if (currentInstructor) {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs/${currentInstructor.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(instructorData),
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Instructeur bijgewerkt",
+          description: `Instructeur ${instructorData.naam} is succesvol bijgewerkt.`,
+        })
+      } else {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(instructorData),
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Instructeur toegevoegd",
+          description: `Nieuwe instructeur ${instructorData.naam} is succesvol toegevoegd.`,
+        })
+      }
+      setIsDialogOpen(false)
+      fetchInstructors() // Refresh the list
+    } catch (error) {
+      console.error("Fout bij opslaan instructeur:", error)
+      toast({
+        title: "Fout",
+        description: "Kon instructeur niet opslaan.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Instructeurs</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nieuwe Instructeur
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Nieuwe Instructeur Toevoegen</DialogTitle>
-              <DialogDescription>Voer de gegevens van de nieuwe instructeur in.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="naam" className="text-right">
-                  Naam
-                </Label>
-                <Input id="naam" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="email" className="text-right">
-                  Email
-                </Label>
-                <Input id="email" type="email" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="telefoon" className="text-right">
-                  Telefoon
-                </Label>
-                <Input id="telefoon" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="specialisatie" className="text-right">
-                  Specialisatie
-                </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer specialisatie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="automaat">Automaat</SelectItem>
-                    <SelectItem value="schakel">Schakel</SelectItem>
-                    <SelectItem value="beide">Automaat & Schakel</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="startdatum" className="text-right">
-                  Startdatum
-                </Label>
-                <Input id="startdatum" type="date" className="col-span-3" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" onClick={() => setIsDialogOpen(false)}>
-                Instructeur Toevoegen
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Instructeurs</h1>
+        <Button className="ml-auto" onClick={handleAddInstructor}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Nieuwe Instructeur
+        </Button>
       </div>
-
-      {/* Statistieken Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totaal Instructeurs</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{instructeurs.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {instructeurs.filter((i) => i.status === "Actief").length} actief
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gemiddeld Slagingspercentage</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.round(instructeurs.reduce((acc, i) => acc + i.slagingspercentage, 0) / instructeurs.length)}%
-            </div>
-            <p className="text-xs text-muted-foreground">Alle instructeurs</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totaal Leerlingen</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{instructeurs.reduce((acc, i) => acc + i.leerlingen, 0)}</div>
-            <p className="text-xs text-muted-foreground">Actieve leerlingen</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Beschikbare Instructeurs</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{instructeurs.filter((i) => i.status === "Actief").length}</div>
-            <p className="text-xs text-muted-foreground">Voor nieuwe leerlingen</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Instructeurs Overzicht</CardTitle>
-          <CardDescription>Beheer alle instructeurs en hun gegevens</CardDescription>
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Zoek instructeurs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
+          <CardTitle>Overzicht Instructeurs</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Naam</TableHead>
-                <TableHead>Contact</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead>Telefoon</TableHead>
                 <TableHead>Specialisatie</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Leerlingen</TableHead>
-                <TableHead>Slagingspercentage</TableHead>
-                <TableHead>Ervaring</TableHead>
-                <TableHead>Acties</TableHead>
+                <TableHead className="text-right">Acties</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInstructeurs.map((instructeur) => (
-                <TableRow key={instructeur.id}>
-                  <TableCell className="font-medium">{instructeur.naam}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col space-y-1">
-                      <div className="flex items-center space-x-1">
-                        <Mail className="h-3 w-3" />
-                        <span className="text-sm">{instructeur.email}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Phone className="h-3 w-3" />
-                        <span className="text-sm">{instructeur.telefoon}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getSpecialisatieColor(instructeur.specialisatie)}>
-                      {instructeur.specialisatie}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(instructeur.status)}>{instructeur.status}</Badge>
-                  </TableCell>
-                  <TableCell>{instructeur.leerlingen}</TableCell>
-                  <TableCell>{instructeur.slagingspercentage}%</TableCell>
-                  <TableCell>{instructeur.ervaring}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {instructors.map((instructor) => (
+                <TableRow key={instructor.id}>
+                  <TableCell>{instructor.name}</TableCell>
+                  <TableCell>{instructor.email}</TableCell>
+                  <TableCell>{instructor.phone}</TableCell>
+                  <TableCell>{instructor.specialization.join(", ")}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditInstructor(instructor)}
+                      className="mr-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Bewerken</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteInstructor(instructor.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Verwijderen</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -291,6 +193,65 @@ export default function Instructeurs() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{currentInstructor ? "Instructeur Bewerken" : "Nieuwe Instructeur Toevoegen"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Naam
+              </Label>
+              <Input id="name" name="name" defaultValue={currentInstructor?.name} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                E-mail
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue={currentInstructor?.email}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Telefoon
+              </Label>
+              <Input id="phone" name="phone" defaultValue={currentInstructor?.phone} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="specialization" className="text-right">
+                Rijbewijs Type
+              </Label>
+              <Select
+                name="specialization"
+                defaultValue={currentInstructor?.specialization[0]} // Assuming single select for simplicity in form
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="B">B (Personenauto)</SelectItem>
+                  <SelectItem value="A">A (Motor)</SelectItem>
+                  <SelectItem value="C">C (Vrachtwagen)</SelectItem>
+                  <SelectItem value="D">D (Bus)</SelectItem>
+                  <SelectItem value="E">E (Aanhangwagen)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="submit">{currentInstructor ? "Opslaan" : "Toevoegen"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

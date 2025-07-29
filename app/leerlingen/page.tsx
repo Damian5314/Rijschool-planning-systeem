@@ -1,458 +1,271 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, Eye, Euro } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2, Eye } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "@/components/ui/use-toast"
+import type { Student, Instructor } from "@/lib/data" // Assuming Instructor interface is also here
 
-export default function Leerlingen() {
-  const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
+export default function LeerlingenPage() {
+  const [students, setStudents] = useState<Student[]>([])
+  const [instructors, setInstructors] = useState<Instructor[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isAdresDialogOpen, setIsAdresDialogOpen] = useState(false)
+  const [currentStudent, setCurrentStudent] = useState<Student | null>(null)
 
-  const [newLeerling, setNewLeerling] = useState({
-    naam: "",
-    email: "",
-    telefoon: "",
-    transmissie: "",
-    instructeur: "",
-    adres: "",
-    postcode: "",
-    plaats: "",
-    geboortedatum: "",
-    opmerkingen: "",
-  })
+  useEffect(() => {
+    fetchStudents()
+    fetchInstructors()
+  }, [])
 
-  const [leerlingen, setLeerlingen] = useState([
-    {
-      id: 1,
-      naam: "Emma van der Berg",
-      email: "emma@email.com",
-      telefoon: "06-12345678",
-      transmissie: "Automaat",
-      status: "Actief",
-      lessen: 15,
-      instructeur: "Jan Bakker",
-      startdatum: "2024-01-15",
-      adres: "Hoofdstraat 123",
-      postcode: "1234 AB",
-      plaats: "Amsterdam",
-      tegoed: 150.0,
-    },
-    {
-      id: 2,
-      naam: "Tom Jansen",
-      email: "tom@email.com",
-      telefoon: "06-87654321",
-      transmissie: "Schakel",
-      status: "Examen",
-      lessen: 28,
-      instructeur: "Lisa de Vries",
-      startdatum: "2023-11-20",
-      adres: "Kerkstraat 45",
-      postcode: "5678 CD",
-      plaats: "Rotterdam",
-      tegoed: 75.5,
-    },
-    {
-      id: 3,
-      naam: "Sophie Willems",
-      email: "sophie@email.com",
-      telefoon: "06-11223344",
-      transmissie: "Automaat",
-      status: "Actief",
-      lessen: 8,
-      instructeur: "Mark Peters",
-      startdatum: "2024-02-10",
-      adres: "Dorpsstraat 67",
-      postcode: "9012 EF",
-      plaats: "Utrecht",
-      tegoed: 200.0,
-    },
-    {
-      id: 4,
-      naam: "David Smit",
-      email: "david@email.com",
-      telefoon: "06-55667788",
-      transmissie: "Schakel",
-      status: "Geslaagd",
-      lessen: 35,
-      instructeur: "Jan Bakker",
-      startdatum: "2023-09-05",
-      adres: "Schoolstraat 89",
-      postcode: "3456 GH",
-      plaats: "Den Haag",
-      tegoed: 0.0,
-    },
-  ])
-
-  const filteredLeerlingen = leerlingen.filter(
-    (leerling) =>
-      leerling.naam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leerling.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leerling.plaats.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Actief":
-        return "bg-green-100 text-green-800"
-      case "Examen":
-        return "bg-yellow-100 text-yellow-800"
-      case "Geslaagd":
-        return "bg-blue-100 text-blue-800"
-      case "Gestopt":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const addLeerling = () => {
-    if (newLeerling.naam && newLeerling.email && newLeerling.telefoon) {
-      const leerling = {
-        id: leerlingen.length + 1,
-        ...newLeerling,
-        status: "Nieuw",
-        lessen: 0,
-        startdatum: new Date().toISOString().split("T")[0],
-        tegoed: 0.0,
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      setLeerlingen([...leerlingen, leerling])
-      setNewLeerling({
-        naam: "",
-        email: "",
-        telefoon: "",
-        transmissie: "",
-        instructeur: "",
-        adres: "",
-        postcode: "",
-        plaats: "",
-        geboortedatum: "",
-        opmerkingen: "",
-      })
-      setIsDialogOpen(false)
+      const data = await response.json()
+      setStudents(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          address: item.adres,
+          dateOfBirth: item.geboortedatum ? new Date(item.geboortedatum).toISOString().split("T")[0] : "",
+          licenseType: item.rijbewijsType,
+          startDate: new Date(item.datumAangemaakt).toISOString().split("T")[0],
+          instructor: item.instructeur, // This will be the instructor ID
+          lessonCount: item.lesGeschiedenis.length,
+          theoryPassed: item.examens.some((exam: any) => exam.type === "Theorie" && exam.resultaat === "Geslaagd"),
+          practicalExamDate: item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")
+            ?.datum
+            ? new Date(
+                item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")?.datum,
+              )
+                .toISOString()
+                .split("T")[0]
+            : undefined,
+          status: item.status,
+          progress: (item.lesGeschiedenis.length / 40) * 100, // Example progress calculation
+          nextLesson: "N.v.t.", // Placeholder, needs actual lesson fetching
+          avatar: "/placeholder-user.jpg", // Placeholder
+          postcode: item.postcode,
+          plaats: item.plaats,
+          transmissie: item.transmissie,
+          financieel: item.financieel,
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van leerlingen:", error)
       toast({
-        title: "Leerling toegevoegd",
-        description: `${newLeerling.naam} is succesvol toegevoegd.`,
+        title: "Fout",
+        description: "Kon leerlingen niet ophalen.",
+        variant: "destructive",
       })
     }
   }
 
-  const deleteLeerling = (id: number) => {
-    setLeerlingen(leerlingen.filter((l) => l.id !== id))
-    toast({
-      title: "Leerling verwijderd",
-      description: "De leerling is succesvol verwijderd.",
-      variant: "destructive",
-    })
+  const fetchInstructors = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setInstructors(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          specialization: item.rijbewijsType,
+          experience: 0,
+          rating: 0,
+          availability: [],
+          students: 0,
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van instructeurs:", error)
+      toast({
+        title: "Fout",
+        description: "Kon instructeurs niet ophalen.",
+        variant: "destructive",
+      })
+    }
   }
 
-  // Adres suggesties (mock data - in productie zou dit een echte API zijn)
-  const adresSuggesties = [
-    { adres: "Hoofdstraat 123", postcode: "1234 AB", plaats: "Amsterdam" },
-    { adres: "Kerkstraat 45", postcode: "5678 CD", plaats: "Rotterdam" },
-    { adres: "Dorpsstraat 67", postcode: "9012 EF", plaats: "Utrecht" },
-    { adres: "Schoolstraat 89", postcode: "3456 GH", plaats: "Den Haag" },
-  ]
+  const handleAddStudent = () => {
+    setCurrentStudent(null)
+    setIsDialogOpen(true)
+  }
 
-  const selectAdres = (adres: any) => {
-    setNewLeerling({
-      ...newLeerling,
-      adres: adres.adres,
-      postcode: adres.postcode,
-      plaats: adres.plaats,
-    })
-    setIsAdresDialogOpen(false)
+  const handleEditStudent = (student: Student) => {
+    setCurrentStudent(student)
+    setIsDialogOpen(true)
+  }
+
+  const handleDeleteStudent = async (id: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/${id}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      setStudents(students.filter((student) => student.id !== id))
+      toast({
+        title: "Leerling verwijderd",
+        description: `Leerling is succesvol verwijderd.`,
+      })
+    } catch (error) {
+      console.error("Fout bij het verwijderen van leerling:", error)
+      toast({
+        title: "Fout",
+        description: "Kon leerling niet verwijderen.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const formData = new FormData(e.target as HTMLFormElement)
+    const studentData = {
+      naam: formData.get("name") as string,
+      email: formData.get("email") as string,
+      telefoon: formData.get("phone") as string,
+      adres: formData.get("address") as string,
+      postcode: formData.get("postcode") as string,
+      plaats: formData.get("plaats") as string,
+      geboortedatum: formData.get("dateOfBirth")
+        ? new Date(formData.get("dateOfBirth") as string).toISOString()
+        : undefined,
+      rijbewijsType: formData.get("licenseType") as string,
+      transmissie: formData.get("transmission") as string,
+      status: formData.get("status") as string,
+      instructeur: formData.get("instructor") as string,
+    }
+
+    try {
+      let response
+      if (currentStudent) {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/${currentStudent.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(studentData),
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Leerling bijgewerkt",
+          description: `Leerling ${studentData.naam} is succesvol bijgewerkt.`,
+        })
+      } else {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(studentData),
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Leerling toegevoegd",
+          description: `Nieuwe leerling ${studentData.naam} is succesvol toegevoegd.`,
+        })
+      }
+      setIsDialogOpen(false)
+      fetchStudents() // Refresh the list
+    } catch (error) {
+      console.error("Fout bij opslaan leerling:", error)
+      toast({
+        title: "Fout",
+        description: "Kon leerling niet opslaan.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const getInstructorName = (instructorId: string) => {
+    const instructor = instructors.find((inst) => inst.id === instructorId)
+    return instructor ? instructor.name : "N.v.t."
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Leerlingen
-        </h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
-              <Plus className="mr-2 h-4 w-4" />
-              Nieuwe Leerling
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Nieuwe Leerling Toevoegen</DialogTitle>
-              <DialogDescription>Voer de gegevens van de nieuwe leerling in.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="naam">Volledige Naam *</Label>
-                  <Input
-                    id="naam"
-                    placeholder="Voor- en achternaam"
-                    value={newLeerling.naam}
-                    onChange={(e) => setNewLeerling({ ...newLeerling, naam: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="geboortedatum">Geboortedatum</Label>
-                  <Input
-                    id="geboortedatum"
-                    type="date"
-                    value={newLeerling.geboortedatum}
-                    onChange={(e) => setNewLeerling({ ...newLeerling, geboortedatum: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="naam@email.com"
-                    value={newLeerling.email}
-                    onChange={(e) => setNewLeerling({ ...newLeerling, email: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="telefoon">Telefoon *</Label>
-                  <Input
-                    id="telefoon"
-                    placeholder="06-12345678"
-                    value={newLeerling.telefoon}
-                    onChange={(e) => setNewLeerling({ ...newLeerling, telefoon: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* Adres sectie */}
-              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Adresgegevens</Label>
-                  <Dialog open={isAdresDialogOpen} onOpenChange={setIsAdresDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        Zoek adres
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Adres zoeken</DialogTitle>
-                        <DialogDescription>Zoek en selecteer het juiste adres</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <Input placeholder="Typ adres, postcode of plaats..." />
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {adresSuggesties.map((adres, index) => (
-                            <div
-                              key={index}
-                              className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                              onClick={() => selectAdres(adres)}
-                            >
-                              <div className="font-medium">{adres.adres}</div>
-                              <div className="text-sm text-gray-600">
-                                {adres.postcode} {adres.plaats}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <div>
-                  <Label htmlFor="adres">Straat en huisnummer</Label>
-                  <Input
-                    id="adres"
-                    placeholder="Hoofdstraat 123"
-                    value={newLeerling.adres}
-                    onChange={(e) => setNewLeerling({ ...newLeerling, adres: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="postcode">Postcode</Label>
-                    <Input
-                      id="postcode"
-                      placeholder="1234 AB"
-                      value={newLeerling.postcode}
-                      onChange={(e) => setNewLeerling({ ...newLeerling, postcode: e.target.value.toUpperCase() })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="plaats">Plaats</Label>
-                    <Input
-                      id="plaats"
-                      placeholder="Amsterdam"
-                      value={newLeerling.plaats}
-                      onChange={(e) => setNewLeerling({ ...newLeerling, plaats: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="transmissie">Transmissie</Label>
-                  <Select
-                    value={newLeerling.transmissie}
-                    onValueChange={(value) => setNewLeerling({ ...newLeerling, transmissie: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer transmissie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Automaat">Automaat</SelectItem>
-                      <SelectItem value="Schakel">Schakel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="instructeur">Instructeur</Label>
-                  <Select
-                    value={newLeerling.instructeur}
-                    onValueChange={(value) => setNewLeerling({ ...newLeerling, instructeur: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer instructeur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Jan Bakker">Jan Bakker</SelectItem>
-                      <SelectItem value="Lisa de Vries">Lisa de Vries</SelectItem>
-                      <SelectItem value="Mark Peters">Mark Peters</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="opmerkingen">Opmerkingen</Label>
-                <Textarea
-                  id="opmerkingen"
-                  placeholder="Extra informatie over de leerling..."
-                  value={newLeerling.opmerkingen}
-                  onChange={(e) => setNewLeerling({ ...newLeerling, opmerkingen: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Annuleren
-              </Button>
-              <Button onClick={addLeerling} className="bg-gradient-to-r from-blue-500 to-purple-500">
-                Leerling Toevoegen
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Leerlingen</h1>
+        <Button className="ml-auto" onClick={handleAddStudent}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Nieuwe Leerling
+        </Button>
       </div>
-
-      <Card className="card-hover glass-effect">
+      <Card>
         <CardHeader>
-          <CardTitle>Leerlingen Overzicht</CardTitle>
-          <CardDescription>Beheer alle leerlingen en hun contractgegevens</CardDescription>
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Zoek leerlingen..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm bg-white/50"
-            />
-          </div>
+          <CardTitle>Overzicht Leerlingen</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Naam</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Adres</TableHead>
-                <TableHead>Transmissie</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead>Telefoon</TableHead>
+                <TableHead>Instructeur</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Lessen</TableHead>
-                <TableHead>Tegoed</TableHead>
-                <TableHead>Acties</TableHead>
+                <TableHead className="text-right">Acties</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLeerlingen.map((leerling) => (
-                <TableRow key={leerling.id}>
-                  <TableCell className="font-medium">{leerling.naam}</TableCell>
+              {students.map((student) => (
+                <TableRow key={student.id}>
+                  <TableCell>{student.name}</TableCell>
+                  <TableCell>{student.email}</TableCell>
+                  <TableCell>{student.phone}</TableCell>
+                  <TableCell>{getInstructorName(student.instructor)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col space-y-1">
-                      <div className="flex items-center space-x-1">
-                        <Mail className="h-3 w-3" />
-                        <span className="text-sm">{leerling.email}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Phone className="h-3 w-3" />
-                        <span className="text-sm">{leerling.telefoon}</span>
-                      </div>
-                    </div>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        student.status === "Actief"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : student.status === "Gepauzeerd"
+                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                      }`}
+                    >
+                      {student.status}
+                    </span>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-start space-x-1">
-                      <MapPin className="h-3 w-3 mt-0.5" />
-                      <div className="text-sm">
-                        <div>{leerling.adres}</div>
-                        <div className="text-gray-500">
-                          {leerling.postcode} {leerling.plaats}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={leerling.transmissie === "Automaat" ? "default" : "secondary"}>
-                      {leerling.transmissie}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(leerling.status)}>{leerling.status}</Badge>
-                  </TableCell>
-                  <TableCell>{leerling.lessen}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-1">
-                      <Euro className="h-3 w-3" />
-                      <span className={leerling.tegoed > 0 ? "text-green-600 font-medium" : "text-gray-500"}>
-                        {leerling.tegoed.toFixed(2)}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Link href={`/leerlingen/${leerling.id}`}>
-                        <Button variant="ghost" size="sm" title="Bekijk profiel">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button variant="ghost" size="sm" title="Bewerken">
-                        <Edit className="h-4 w-4" />
+                  <TableCell className="text-right">
+                    <Link href={`/leerlingen/${student.id}`}>
+                      <Button variant="ghost" size="icon" className="mr-2">
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">Bekijken</span>
                       </Button>
-                      <Button variant="ghost" size="sm" title="Verwijderen" onClick={() => deleteLeerling(leerling.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    </Link>
+                    <Button variant="ghost" size="icon" onClick={() => handleEditStudent(student)} className="mr-2">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Bewerken</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Verwijderen</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -460,6 +273,136 @@ export default function Leerlingen() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{currentStudent ? "Leerling Bewerken" : "Nieuwe Leerling Toevoegen"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Naam
+              </Label>
+              <Input id="name" name="name" defaultValue={currentStudent?.name} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                E-mail
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue={currentStudent?.email}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Telefoon
+              </Label>
+              <Input id="phone" name="phone" defaultValue={currentStudent?.phone} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address" className="text-right">
+                Adres
+              </Label>
+              <Input id="address" name="address" defaultValue={currentStudent?.address} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="postcode" className="text-right">
+                Postcode
+              </Label>
+              <Input id="postcode" name="postcode" defaultValue={currentStudent?.postcode} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="plaats" className="text-right">
+                Plaats
+              </Label>
+              <Input id="plaats" name="plaats" defaultValue={currentStudent?.plaats} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dateOfBirth" className="text-right">
+                Geboortedatum
+              </Label>
+              <Input
+                id="dateOfBirth"
+                name="dateOfBirth"
+                type="date"
+                defaultValue={currentStudent?.dateOfBirth}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="licenseType" className="text-right">
+                Rijbewijs Type
+              </Label>
+              <Select name="licenseType" defaultValue={currentStudent?.licenseType} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="B">B (Personenauto)</SelectItem>
+                  <SelectItem value="A">A (Motor)</SelectItem>
+                  <SelectItem value="AM">AM (Bromfiets)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="transmission" className="text-right">
+                Transmissie
+              </Label>
+              <Select name="transmission" defaultValue={currentStudent?.transmissie} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer transmissie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Handgeschakeld">Handgeschakeld</SelectItem>
+                  <SelectItem value="Automaat">Automaat</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="instructor" className="text-right">
+                Instructeur
+              </Label>
+              <Select name="instructor" defaultValue={currentStudent?.instructor}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer instructeur" />
+                </SelectTrigger>
+                <SelectContent>
+                  {instructors.map((instr) => (
+                    <SelectItem key={instr.id} value={instr.id}>
+                      {instr.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select name="status" defaultValue={currentStudent?.status} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Actief">Actief</SelectItem>
+                  <SelectItem value="Inactief">Inactief</SelectItem>
+                  <SelectItem value="Gepauzeerd">Gepauzeerd</SelectItem>
+                  <SelectItem value="Afgestudeerd">Afgestudeerd</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="submit">{currentStudent ? "Opslaan" : "Toevoegen"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

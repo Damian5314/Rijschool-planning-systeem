@@ -1,476 +1,257 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Plus, Search, Edit, Trash2, Car, Gauge, CalendarIcon, Wrench, AlertTriangle, CheckCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
-import { nl } from "date-fns/locale"
+import { toast } from "@/components/ui/use-toast"
+import type { Vehicle, Instructor } from "@/lib/data" // Assuming Instructor interface is also here
 
-export default function Voertuigen() {
-  const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
+export default function VoertuigenPage() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [instructors, setInstructors] = useState<Instructor[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isOnderhoudDialogOpen, setIsOnderhoudDialogOpen] = useState(false)
-  const [isKmDialogOpen, setIsKmDialogOpen] = useState(false)
-  const [selectedVoertuig, setSelectedVoertuig] = useState<any>(null)
-  const [onderhoudDatum, setOnderhoudDatum] = useState<Date>()
-  const [nieuweKm, setNieuweKm] = useState("")
+  const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null)
 
-  const [newVoertuig, setNewVoertuig] = useState({
-    kenteken: "",
-    merk: "",
-    model: "",
-    jaar: "",
-    transmissie: "",
-    instructeur: "",
-    kilometerstand: "",
-    opmerkingen: "",
-  })
+  useEffect(() => {
+    fetchVehicles()
+    fetchInstructors()
+  }, [])
 
-  const [voertuigen, setVoertuigen] = useState([
-    {
-      id: 1,
-      kenteken: "GDD-67-T",
-      merk: "Volkswagen",
-      model: "Polo",
-      jaar: 2022,
-      transmissie: "Automaat",
-      kilometerstand: 45230,
-      laatsteKeuring: "2024-03-15",
-      status: "Actief",
-      instructeur: "Jan Bakker",
-      opmerkingen: "Nieuwe banden geplaatst",
-      laatsteOnderhoud: "2024-01-15",
-      volgendOnderhoud: "2024-07-15",
-    },
-    {
-      id: 2,
-      kenteken: "HLL-97-V",
-      merk: "Toyota",
-      model: "Yaris",
-      jaar: 2021,
-      transmissie: "Schakel",
-      kilometerstand: 67890,
-      laatsteKeuring: "2024-01-20",
-      status: "Actief",
-      instructeur: "Lisa de Vries",
-      opmerkingen: "Onderhoud gepland voor volgende maand",
-      laatsteOnderhoud: "2023-12-10",
-      volgendOnderhoud: "2024-08-10",
-    },
-    {
-      id: 3,
-      kenteken: "ABC-12-D",
-      merk: "Opel",
-      model: "Corsa",
-      jaar: 2020,
-      transmissie: "Automaat",
-      kilometerstand: 89450,
-      laatsteKeuring: "2023-11-10",
-      status: "Onderhoud",
-      instructeur: "Mark Peters",
-      opmerkingen: "In garage voor grote beurt",
-      laatsteOnderhoud: "2024-06-01",
-      volgendOnderhoud: "2024-12-01",
-    },
-  ])
-
-  const filteredVoertuigen = voertuigen.filter(
-    (voertuig) =>
-      voertuig.kenteken.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      voertuig.merk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      voertuig.model.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Actief":
-        return "bg-green-100 text-green-800"
-      case "Onderhoud":
-        return "bg-yellow-100 text-yellow-800"
-      case "Buiten dienst":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getTransmissieColor = (transmissie: string) => {
-    return transmissie === "Automaat" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"
-  }
-
-  const addVoertuig = () => {
-    if (newVoertuig.kenteken && newVoertuig.merk && newVoertuig.model) {
-      const voertuig = {
-        id: voertuigen.length + 1,
-        ...newVoertuig,
-        jaar: Number.parseInt(newVoertuig.jaar),
-        kilometerstand: Number.parseInt(newVoertuig.kilometerstand) || 0,
-        status: "Actief",
-        laatsteKeuring: new Date().toISOString().split("T")[0],
-        laatsteOnderhoud: new Date().toISOString().split("T")[0],
-        volgendOnderhoud: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+  const fetchVehicles = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/vehicles`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      setVoertuigen([...voertuigen, voertuig])
-      setNewVoertuig({
-        kenteken: "",
-        merk: "",
-        model: "",
-        jaar: "",
-        transmissie: "",
-        instructeur: "",
-        kilometerstand: "",
-        opmerkingen: "",
+      const data = await response.json()
+      setVehicles(
+        data.map((item: any) => ({
+          id: item._id,
+          brand: item.merk,
+          model: item.model,
+          year: item.bouwjaar,
+          licensePlate: item.kenteken,
+          type: item.transmissie === "Handgeschakeld" ? "manual" : "automatic",
+          fuelType: item.brandstof,
+          mileage: item.kilometerstand,
+          lastMaintenance: item.laatsteOnderhoud ? new Date(item.laatsteOnderhoud).toISOString().split("T")[0] : "",
+          nextMaintenance: item.volgendeOnderhoud ? new Date(item.volgendeOnderhoud).toISOString().split("T")[0] : "",
+          keuringDate: item.apkDatum ? new Date(item.apkDatum).toISOString().split("T")[0] : "",
+          status: item.status,
+          instructor: item.instructeur,
+          image: "/placeholder.svg", // Placeholder
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van voertuigen:", error)
+      toast({
+        title: "Fout",
+        description: "Kon voertuigen niet ophalen.",
+        variant: "destructive",
       })
+    }
+  }
+
+  const fetchInstructors = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setInstructors(
+        data.map((item: any) => ({
+          id: item._id,
+          name: item.naam,
+          email: item.email,
+          phone: item.telefoon,
+          specialization: item.rijbewijsType,
+          experience: 0,
+          rating: 0,
+          availability: [],
+          students: 0,
+        })),
+      )
+    } catch (error) {
+      console.error("Fout bij het ophalen van instructeurs:", error)
+      toast({
+        title: "Fout",
+        description: "Kon instructeurs niet ophalen.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleAddVehicle = () => {
+    setCurrentVehicle(null)
+    setIsDialogOpen(true)
+  }
+
+  const handleEditVehicle = (vehicle: Vehicle) => {
+    setCurrentVehicle(vehicle)
+    setIsDialogOpen(true)
+  }
+
+  const handleDeleteVehicle = async (id: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/vehicles/${id}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      setVehicles(vehicles.filter((vehicle) => vehicle.id !== id))
+      toast({
+        title: "Voertuig verwijderd",
+        description: `Voertuig is succesvol verwijderd.`,
+      })
+    } catch (error) {
+      console.error("Fout bij het verwijderen van voertuig:", error)
+      toast({
+        title: "Fout",
+        description: "Kon voertuig niet verwijderen.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const formData = new FormData(e.target as HTMLFormElement)
+    const vehicleData = {
+      merk: formData.get("brand") as string,
+      model: formData.get("model") as string,
+      bouwjaar: Number.parseInt(formData.get("year") as string),
+      kenteken: formData.get("licensePlate") as string,
+      transmissie: formData.get("type") === "manual" ? "Handgeschakeld" : "Automaat",
+      brandstof: formData.get("fuelType") as string,
+      kilometerstand: Number.parseInt(formData.get("mileage") as string),
+      laatsteOnderhoud: formData.get("lastMaintenance")
+        ? new Date(formData.get("lastMaintenance") as string).toISOString()
+        : undefined,
+      volgendeOnderhoud: formData.get("nextMaintenance")
+        ? new Date(formData.get("nextMaintenance") as string).toISOString()
+        : undefined,
+      apkDatum: formData.get("keuringDate") ? new Date(formData.get("keuringDate") as string).toISOString() : undefined,
+      status: formData.get("status") as string,
+      instructeur: (formData.get("instructor") as string) || null, // Can be null
+    }
+
+    try {
+      let response
+      if (currentVehicle) {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/vehicles/${currentVehicle.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(vehicleData),
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Voertuig bijgewerkt",
+          description: `Voertuig ${vehicleData.merk} ${vehicleData.model} is succesvol bijgewerkt.`,
+        })
+      } else {
+        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/vehicles`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(vehicleData),
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        toast({
+          title: "Voertuig toegevoegd",
+          description: `Nieuw voertuig ${vehicleData.merk} ${vehicleData.model} is succesvol toegevoegd.`,
+        })
+      }
       setIsDialogOpen(false)
+      fetchVehicles() // Refresh the list
+    } catch (error) {
+      console.error("Fout bij opslaan voertuig:", error)
       toast({
-        title: "Voertuig toegevoegd",
-        description: `${newVoertuig.merk} ${newVoertuig.model} is succesvol toegevoegd.`,
+        title: "Fout",
+        description: "Kon voertuig niet opslaan.",
+        variant: "destructive",
       })
     }
   }
 
-  const planOnderhoud = () => {
-    if (selectedVoertuig && onderhoudDatum) {
-      setVoertuigen(
-        voertuigen.map((v) =>
-          v.id === selectedVoertuig.id
-            ? { ...v, volgendOnderhoud: format(onderhoudDatum, "yyyy-MM-dd"), status: "Onderhoud gepland" }
-            : v,
-        ),
-      )
-      setIsOnderhoudDialogOpen(false)
-      setOnderhoudDatum(undefined)
-      toast({
-        title: "Onderhoud gepland",
-        description: `Onderhoud voor ${selectedVoertuig.kenteken} is gepland voor ${format(onderhoudDatum, "dd MMMM yyyy", { locale: nl })}.`,
-      })
-    }
-  }
-
-  const updateKilometerstand = () => {
-    if (selectedVoertuig && nieuweKm) {
-      setVoertuigen(
-        voertuigen.map((v) => (v.id === selectedVoertuig.id ? { ...v, kilometerstand: Number.parseInt(nieuweKm) } : v)),
-      )
-      setIsKmDialogOpen(false)
-      setNieuweKm("")
-      toast({
-        title: "Kilometerstand bijgewerkt",
-        description: `Kilometerstand voor ${selectedVoertuig.kenteken} is bijgewerkt naar ${Number.parseInt(nieuweKm).toLocaleString()} km.`,
-      })
-    }
-  }
-
-  const deleteVoertuig = (id: number) => {
-    setVoertuigen(voertuigen.filter((v) => v.id !== id))
-    toast({
-      title: "Voertuig verwijderd",
-      description: "Het voertuig is succesvol verwijderd.",
-      variant: "destructive",
-    })
+  const getInstructorName = (instructorId: string | undefined) => {
+    if (!instructorId) return "N.v.t."
+    const instructor = instructors.find((inst) => inst.id === instructorId)
+    return instructor ? instructor.name : "Onbekend"
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Voertuigen
-        </h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
-              <Plus className="mr-2 h-4 w-4" />
-              Voertuig Toevoegen
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Nieuw Voertuig Toevoegen</DialogTitle>
-              <DialogDescription>Voer de gegevens van het nieuwe voertuig in.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="kenteken">Kenteken *</Label>
-                  <Input
-                    id="kenteken"
-                    placeholder="XX-XX-XX"
-                    value={newVoertuig.kenteken}
-                    onChange={(e) => setNewVoertuig({ ...newVoertuig, kenteken: e.target.value.toUpperCase() })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="jaar">Bouwjaar *</Label>
-                  <Input
-                    id="jaar"
-                    type="number"
-                    placeholder="2023"
-                    value={newVoertuig.jaar}
-                    onChange={(e) => setNewVoertuig({ ...newVoertuig, jaar: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="merk">Merk *</Label>
-                  <Input
-                    id="merk"
-                    placeholder="Volkswagen"
-                    value={newVoertuig.merk}
-                    onChange={(e) => setNewVoertuig({ ...newVoertuig, merk: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="model">Model *</Label>
-                  <Input
-                    id="model"
-                    placeholder="Polo"
-                    value={newVoertuig.model}
-                    onChange={(e) => setNewVoertuig({ ...newVoertuig, model: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="transmissie">Transmissie</Label>
-                  <Select
-                    value={newVoertuig.transmissie}
-                    onValueChange={(value) => setNewVoertuig({ ...newVoertuig, transmissie: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer transmissie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Automaat">Automaat</SelectItem>
-                      <SelectItem value="Schakel">Schakel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="kilometerstand">Kilometerstand</Label>
-                  <Input
-                    id="kilometerstand"
-                    type="number"
-                    placeholder="50000"
-                    value={newVoertuig.kilometerstand}
-                    onChange={(e) => setNewVoertuig({ ...newVoertuig, kilometerstand: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="instructeur">Instructeur</Label>
-                <Select
-                  value={newVoertuig.instructeur}
-                  onValueChange={(value) => setNewVoertuig({ ...newVoertuig, instructeur: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecteer instructeur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Jan Bakker">Jan Bakker</SelectItem>
-                    <SelectItem value="Lisa de Vries">Lisa de Vries</SelectItem>
-                    <SelectItem value="Mark Peters">Mark Peters</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="opmerkingen">Opmerkingen</Label>
-                <Textarea
-                  id="opmerkingen"
-                  placeholder="Extra informatie over het voertuig..."
-                  value={newVoertuig.opmerkingen}
-                  onChange={(e) => setNewVoertuig({ ...newVoertuig, opmerkingen: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Annuleren
-              </Button>
-              <Button onClick={addVoertuig} className="bg-gradient-to-r from-blue-500 to-purple-500">
-                Voertuig Toevoegen
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Voertuigen</h1>
+        <Button className="ml-auto" onClick={handleAddVehicle}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Nieuw Voertuig
+        </Button>
       </div>
-
-      {/* Statistieken Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="card-hover glass-effect">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totaal Voertuigen</CardTitle>
-            <Car className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {voertuigen.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {voertuigen.filter((v) => v.status === "Actief").length} actief
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover glass-effect">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gemiddelde KM-stand</CardTitle>
-            <Gauge className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              {Math.round(
-                voertuigen.reduce((acc, v) => acc + v.kilometerstand, 0) / voertuigen.length,
-              ).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Kilometers</p>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover glass-effect">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Onderhoud Nodig</CardTitle>
-            <Wrench className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-              {voertuigen.filter((v) => v.status === "Onderhoud").length}
-            </div>
-            <p className="text-xs text-muted-foreground">Voertuigen</p>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover glass-effect">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Keuringen</CardTitle>
-            <CalendarIcon className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              2
-            </div>
-            <p className="text-xs text-muted-foreground">Binnenkort verlopen</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="card-hover glass-effect">
+      <Card>
         <CardHeader>
-          <CardTitle>Voertuigen Overzicht</CardTitle>
-          <CardDescription>Beheer alle voertuigen en hun gegevens</CardDescription>
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Zoek voertuigen..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm bg-white/50"
-            />
-          </div>
+          <CardTitle>Overzicht Voertuigen</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Merk</TableHead>
+                <TableHead>Model</TableHead>
                 <TableHead>Kenteken</TableHead>
-                <TableHead>Voertuig</TableHead>
-                <TableHead>Transmissie</TableHead>
-                <TableHead>Kilometerstand</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Instructeur</TableHead>
-                <TableHead>Onderhoud</TableHead>
-                <TableHead>Acties</TableHead>
+                <TableHead className="text-right">Acties</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredVoertuigen.map((voertuig) => (
-                <TableRow key={voertuig.id}>
-                  <TableCell className="font-medium">{voertuig.kenteken}</TableCell>
+              {vehicles.map((vehicle) => (
+                <TableRow key={vehicle.id}>
+                  <TableCell>{vehicle.brand}</TableCell>
+                  <TableCell>{vehicle.model}</TableCell>
+                  <TableCell>{vehicle.licensePlate}</TableCell>
+                  <TableCell>{vehicle.type === "manual" ? "Schakel" : "Automaat"}</TableCell>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">
-                        {voertuig.merk} {voertuig.model}
-                      </div>
-                      <div className="text-sm text-gray-500">{voertuig.jaar}</div>
-                    </div>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        vehicle.status === "beschikbaar"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : vehicle.status === "onderhoud"
+                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      }`}
+                    >
+                      {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
+                    </span>
                   </TableCell>
-                  <TableCell>
-                    <Badge className={getTransmissieColor(voertuig.transmissie)}>{voertuig.transmissie}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-1">
-                      <Gauge className="h-3 w-3" />
-                      <span>{voertuig.kilometerstand.toLocaleString()} km</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(voertuig.status)}>{voertuig.status}</Badge>
-                  </TableCell>
-                  <TableCell>{voertuig.instructeur}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div className="flex items-center space-x-1">
-                        {new Date(voertuig.volgendOnderhoud) < new Date() ? (
-                          <AlertTriangle className="h-3 w-3 text-red-500" />
-                        ) : (
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                        )}
-                        <span>{new Date(voertuig.volgendOnderhoud).toLocaleDateString("nl-NL")}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm" title="Bewerken">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        title="KM-stand bijwerken"
-                        onClick={() => {
-                          setSelectedVoertuig(voertuig)
-                          setNieuweKm(voertuig.kilometerstand.toString())
-                          setIsKmDialogOpen(true)
-                        }}
-                      >
-                        <Gauge className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        title="Onderhoud plannen"
-                        onClick={() => {
-                          setSelectedVoertuig(voertuig)
-                          setIsOnderhoudDialogOpen(true)
-                        }}
-                      >
-                        <Wrench className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" title="Verwijderen" onClick={() => deleteVoertuig(voertuig.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <TableCell>{getInstructorName(vehicle.instructor)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditVehicle(vehicle)} className="mr-2">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Bewerken</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteVehicle(vehicle.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Verwijderen</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -479,69 +260,180 @@ export default function Voertuigen() {
         </CardContent>
       </Card>
 
-      {/* Onderhoud Dialog */}
-      <Dialog open={isOnderhoudDialogOpen} onOpenChange={setIsOnderhoudDialogOpen}>
-        <DialogContent>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Onderhoud Plannen</DialogTitle>
-            <DialogDescription>
-              Plan onderhoud voor {selectedVoertuig?.kenteken} - {selectedVoertuig?.merk} {selectedVoertuig?.model}
-            </DialogDescription>
+            <DialogTitle>{currentVehicle ? "Voertuig Bewerken" : "Nieuw Voertuig Toevoegen"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Onderhoud Datum</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {onderhoudDatum ? format(onderhoudDatum, "PPP", { locale: nl }) : "Selecteer datum"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={onderhoudDatum} onSelect={setOnderhoudDatum} initialFocus />
-                </PopoverContent>
-              </Popover>
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="brand" className="text-right">
+                Merk
+              </Label>
+              <Input id="brand" name="brand" defaultValue={currentVehicle?.brand} className="col-span-3" required />
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOnderhoudDialogOpen(false)}>
-              Annuleren
-            </Button>
-            <Button onClick={planOnderhoud} className="bg-gradient-to-r from-blue-500 to-purple-500">
-              Onderhoud Plannen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* KM-stand Dialog */}
-      <Dialog open={isKmDialogOpen} onOpenChange={setIsKmDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Kilometerstand Bijwerken</DialogTitle>
-            <DialogDescription>Werk de kilometerstand bij voor {selectedVoertuig?.kenteken}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="nieuwe-km">Nieuwe Kilometerstand</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="model" className="text-right">
+                Model
+              </Label>
+              <Input id="model" name="model" defaultValue={currentVehicle?.model} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="year" className="text-right">
+                Bouwjaar
+              </Label>
               <Input
-                id="nieuwe-km"
+                id="year"
+                name="year"
                 type="number"
-                placeholder="Voer nieuwe kilometerstand in"
-                value={nieuweKm}
-                onChange={(e) => setNieuweKm(e.target.value)}
+                defaultValue={currentVehicle?.year}
+                className="col-span-3"
+                required
               />
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsKmDialogOpen(false)}>
-              Annuleren
-            </Button>
-            <Button onClick={updateKilometerstand} className="bg-gradient-to-r from-blue-500 to-purple-500">
-              Bijwerken
-            </Button>
-          </DialogFooter>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="licensePlate" className="text-right">
+                Kenteken
+              </Label>
+              <Input
+                id="licensePlate"
+                name="licensePlate"
+                defaultValue={currentVehicle?.licensePlate}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="type" className="text-right">
+                Transmissie
+              </Label>
+              <Select
+                name="type"
+                defaultValue={currentVehicle?.type || "manual"} // Updated default value
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Schakel</SelectItem>
+                  <SelectItem value="automatic">Automaat</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="fuelType" className="text-right">
+                Brandstof
+              </Label>
+              <Select
+                name="fuelType"
+                defaultValue={currentVehicle?.fuelType || "benzine"} // Updated default value
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer brandstof" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="benzine">Benzine</SelectItem>
+                  <SelectItem value="diesel">Diesel</SelectItem>
+                  <SelectItem value="elektrisch">Elektrisch</SelectItem>
+                  <SelectItem value="hybride">Hybride</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="mileage" className="text-right">
+                Kilometerstand
+              </Label>
+              <Input
+                id="mileage"
+                name="mileage"
+                type="number"
+                defaultValue={currentVehicle?.mileage}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="lastMaintenance" className="text-right">
+                Laatste Onderhoud
+              </Label>
+              <Input
+                id="lastMaintenance"
+                name="lastMaintenance"
+                type="date"
+                defaultValue={currentVehicle?.lastMaintenance}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="nextMaintenance" className="text-right">
+                Volgende Onderhoud
+              </Label>
+              <Input
+                id="nextMaintenance"
+                name="nextMaintenance"
+                type="date"
+                defaultValue={currentVehicle?.nextMaintenance}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="keuringDate" className="text-right">
+                APK Datum
+              </Label>
+              <Input
+                id="keuringDate"
+                name="keuringDate"
+                type="date"
+                defaultValue={currentVehicle?.keuringDate}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select
+                name="status"
+                defaultValue={currentVehicle?.status || "beschikbaar"} // Updated default value
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="beschikbaar">Beschikbaar</SelectItem>
+                  <SelectItem value="onderhoud">Onderhoud</SelectItem>
+                  <SelectItem value="defect">Defect</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="instructor" className="text-right">
+                Toegewezen Instructeur
+              </Label>
+              <Select
+                name="instructor"
+                defaultValue={currentVehicle?.instructor || ""} // Updated default value
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer instructeur (optioneel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Geen</SelectItem>
+                  {instructors.map((instructor) => (
+                    <SelectItem key={instructor.id} value={instructor.id}>
+                      {instructor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="submit">{currentVehicle ? "Opslaan" : "Toevoegen"}</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

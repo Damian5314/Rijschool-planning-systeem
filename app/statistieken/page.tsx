@@ -1,216 +1,139 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Users, Award, Calendar, Car, Target } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Bar, BarChart, Line, LineChart } from "recharts"
+import { toast } from "@/components/ui/use-toast"
+import type { Lesson, Student } from "@/lib/data"
 
-export default function Statistieken() {
-  const statistieken = {
-    totaalLeerlingen: 45,
-    actieveLeerlingen: 38,
-    afgerondeLeerlingen: 7,
-    slagingspercentage: 78,
-    gemiddeldeLessen: 24,
-    totaalLessen: 1080,
-    dezeWeek: 32,
-    dezeMaand: 128,
-    automaat: {
-      aantal: 28,
-      slagingspercentage: 82,
-    },
-    schakel: {
-      aantal: 17,
-      slagingspercentage: 71,
-    },
+const chartConfig = {
+  lessons: {
+    label: "Lessen",
+    color: "hsl(var(--primary))",
+  },
+  students: {
+    label: "Nieuwe Leerlingen",
+    color: "hsl(var(--secondary))",
+  },
+} satisfies ChartConfig
+
+export default function StatistiekenPage() {
+  const [totalLessons, setTotalLessons] = useState(0)
+  const [totalStudents, setTotalStudents] = useState(0)
+  const [activeStudents, setActiveStudents] = useState(0)
+  const [chartData, setChartData] = useState<any[]>([])
+
+  useEffect(() => {
+    fetchStatisticsData()
+  }, [])
+
+  const fetchStatisticsData = async () => {
+    try {
+      // Fetch lessons
+      const lessonsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons`)
+      if (!lessonsRes.ok) throw new Error("Failed to fetch lessons")
+      const lessonsData: Lesson[] = await lessonsRes.json()
+      setTotalLessons(lessonsData.length)
+
+      // Fetch students
+      const studentsRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`)
+      if (!studentsRes.ok) throw new Error("Failed to fetch students")
+      const studentsData: Student[] = await studentsRes.json()
+      setTotalStudents(studentsData.length)
+      setActiveStudents(studentsData.filter((s) => s.status === "Actief").length)
+
+      // Aggregate data for chart (e.g., lessons and new students per month)
+      const monthlyData: { [key: string]: { month: string; lessons: number; students: number } } = {}
+
+      lessonsData.forEach((lesson) => {
+        const lessonDate = new Date(lesson.date)
+        const monthYear = `${lessonDate.getFullYear()}-${(lessonDate.getMonth() + 1).toString().padStart(2, "0")}`
+        if (!monthlyData[monthYear]) {
+          monthlyData[monthYear] = { month: formatMonthYear(lessonDate), lessons: 0, students: 0 }
+        }
+        monthlyData[monthYear].lessons += 1
+      })
+
+      studentsData.forEach((student) => {
+        const startDate = new Date(student.startDate)
+        const monthYear = `${startDate.getFullYear()}-${(startDate.getMonth() + 1).toString().padStart(2, "0")}`
+        if (!monthlyData[monthYear]) {
+          monthlyData[monthYear] = { month: formatMonthYear(startDate), lessons: 0, students: 0 }
+        }
+        monthlyData[monthYear].students += 1
+      })
+
+      const sortedChartData = Object.values(monthlyData).sort((a, b) => {
+        const [monthA, yearA] = a.month.split(" ")
+        const [monthB, yearB] = b.month.split(" ")
+        const dateA = new Date(`${monthA} 1, ${yearA}`)
+        const dateB = new Date(`${monthB} 1, ${yearB}`)
+        return dateA.getTime() - dateB.getTime()
+      })
+
+      setChartData(sortedChartData)
+    } catch (error: any) {
+      console.error("Fout bij het ophalen van statistieken data:", error)
+      toast({
+        title: "Fout",
+        description: `Kon statistieken data niet ophalen: ${error.message}`,
+        variant: "destructive",
+      })
+    }
   }
 
-  const instructeurStats = [
-    {
-      naam: "Jan Bakker",
-      leerlingen: 15,
-      slagingspercentage: 85,
-      lessenDezeWeek: 12,
-    },
-    {
-      naam: "Lisa de Vries",
-      leerlingen: 12,
-      slagingspercentage: 75,
-      lessenDezeWeek: 10,
-    },
-    {
-      naam: "Mark Peters",
-      leerlingen: 11,
-      slagingspercentage: 73,
-      lessenDezeWeek: 10,
-    },
-  ]
-
-  const maandelijkseData = [
-    { maand: "Sep", leerlingen: 8, geslaagd: 6 },
-    { maand: "Okt", leerlingen: 12, geslaagd: 9 },
-    { maand: "Nov", leerlingen: 10, geslaagd: 8 },
-    { maand: "Dec", leerlingen: 15, geslaagd: 12 },
-    { maand: "Jan", leerlingen: 13, geslaagd: 10 },
-  ]
+  const formatMonthYear = (date: Date) => {
+    return new Intl.DateTimeFormat("nl-NL", { month: "short", year: "numeric" }).format(date)
+  }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Statistieken</h2>
-        <Badge variant="outline">Laatste update: vandaag</Badge>
-      </div>
-
-      {/* Hoofdstatistieken */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+      <h1 className="text-lg font-semibold md:text-2xl">Statistieken</h1>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Totaal Lessen</CardTitle>
+            <LineChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalLessons}</div>
+            <p className="text-xs text-muted-foreground">Alle voltooide en geplande lessen</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Totaal Leerlingen</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <BarChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statistieken.totaalLeerlingen}</div>
-            <p className="text-xs text-muted-foreground">
-              {statistieken.actieveLeerlingen} actief, {statistieken.afgerondeLeerlingen} afgerond
-            </p>
+            <div className="text-2xl font-bold">{totalStudents}</div>
+            <p className="text-xs text-muted-foreground">{activeStudents} actief</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Slagingspercentage</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Gemiddelde Lesduur</CardTitle>
+            <LineChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statistieken.slagingspercentage}%</div>
-            <Progress value={statistieken.slagingspercentage} className="mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gemiddeld Lessen</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistieken.gemiddeldeLessen}</div>
-            <p className="text-xs text-muted-foreground">Per leerling tot slagen</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lessen Deze Week</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistieken.dezeWeek}</div>
-            <p className="text-xs text-muted-foreground">Van {statistieken.dezeMaand} deze maand</p>
+            <div className="text-2xl font-bold">60 min</div> {/* Placeholder, calculate from lessons */}
+            <p className="text-xs text-muted-foreground">Gebaseerd op voltooide lessen</p>
           </CardContent>
         </Card>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Transmissie Verdeling */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Transmissie Verdeling</CardTitle>
-            <CardDescription>Verdeling tussen automaat en schakel leerlingen</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Car className="h-4 w-4" />
-                  <span className="font-medium">Automaat</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-muted-foreground">{statistieken.automaat.aantal} leerlingen</span>
-                  <Badge variant="default">{statistieken.automaat.slagingspercentage}% slaagkans</Badge>
-                </div>
-              </div>
-              <Progress value={(statistieken.automaat.aantal / statistieken.totaalLeerlingen) * 100} />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Car className="h-4 w-4" />
-                  <span className="font-medium">Schakel</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-muted-foreground">{statistieken.schakel.aantal} leerlingen</span>
-                  <Badge variant="secondary">{statistieken.schakel.slagingspercentage}% slaagkans</Badge>
-                </div>
-              </div>
-              <Progress value={(statistieken.schakel.aantal / statistieken.totaalLeerlingen) * 100} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Instructeur Prestaties */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Instructeur Prestaties</CardTitle>
-            <CardDescription>Overzicht per instructeur</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {instructeurStats.map((instructeur, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{instructeur.naam}</span>
-                    <Badge variant="outline">{instructeur.slagingspercentage}% slaagkans</Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{instructeur.leerlingen} leerlingen</span>
-                    <span>{instructeur.lessenDezeWeek} lessen deze week</span>
-                  </div>
-                  <Progress value={instructeur.slagingspercentage} />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Maandelijkse Trend */}
-      <Card>
+      <Card className="flex-1">
         <CardHeader>
-          <CardTitle>Maandelijkse Trend</CardTitle>
-          <CardDescription>Aantal leerlingen en slagingen per maand</CardDescription>
+          <CardTitle>Maandelijkse Activiteit</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {maandelijkseData.map((data, index) => (
-              <div key={index} className="flex items-center space-x-4">
-                <div className="w-12 text-sm font-medium">{data.maand}</div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Leerlingen: {data.leerlingen}</span>
-                    <span>Geslaagd: {data.geslaagd}</span>
-                  </div>
-                  <div className="flex space-x-1">
-                    <div className="flex-1 bg-blue-100 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full"
-                        style={{ width: `${(data.leerlingen / 15) * 100}%` }}
-                      />
-                    </div>
-                    <div className="flex-1 bg-green-100 rounded-full h-2">
-                      <div
-                        className="bg-green-500 h-2 rounded-full"
-                        style={{ width: `${(data.geslaagd / 15) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {Math.round((data.geslaagd / data.leerlingen) * 100)}%
-                </div>
-              </div>
-            ))}
-          </div>
+          <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
+            <BarChart accessibilityLayer data={chartData}>
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="lessons" fill="var(--color-lessons)" radius={4} />
+              <Line type="monotone" dataKey="students" stroke="var(--color-students)" />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
       </Card>
     </div>

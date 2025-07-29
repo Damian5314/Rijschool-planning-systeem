@@ -2,30 +2,26 @@
 
 import type React from "react"
 
-import { usePathname } from "next/navigation"
-import { Sidebar } from "@/components/sidebar"
+import { Toaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "sonner"
 import { AuthGuard } from "@/components/auth-guard"
+import { AuthProvider } from "@/contexts/auth-context"
+import { SidebarProvider } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/sidebar"
 
 export default function ClientLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const pathname = usePathname()
-  const isAuthPage = pathname === "/login" || pathname === "/register"
-
-  if (isAuthPage) {
-    return <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">{children}</div>
-  }
-
   return (
-    <AuthGuard>
-      <div className="flex h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <Sidebar />
-        <main className="flex-1 overflow-auto">
-          <div className="p-6">{children}</div>
-        </main>
-      </div>
-    </AuthGuard>
+    <AuthProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <AuthGuard>{children}</AuthGuard>
+        <Toaster />
+        <SonnerToaster richColors position="top-right" />
+      </SidebarProvider>
+    </AuthProvider>
   )
 }
