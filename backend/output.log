@@ -1,0 +1,12 @@
+🚀 ===================================
+🏫 Rijschool API Server Started
+🚀 ===================================
+📍 Server URL: http://localhost:5000
+📋 API Docs: http://localhost:5000/api
+🏥 Health: http://localhost:5000/health
+🔐 Test Login: admin@rijschool.nl / admin123
+💾 Database: PostgreSQL (Neon)
+🛡️ Security: Enhanced (Rate limiting, Validation, Sanitization)
+🌍 Environment: development
+🚀 ===================================
+❌ Database verbinding fout: Connection terminated due to connection timeout
