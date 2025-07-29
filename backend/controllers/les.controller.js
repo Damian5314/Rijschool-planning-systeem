@@ -448,10 +448,271 @@ const deleteLes = async (req, res) => {
   }
 }
 
+// Get today's lessons
+const getTodayLessons = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        l.*,
+        s.naam as student_naam,
+        s.telefoon as student_telefoon,
+        i.naam as instructeur_naam,
+        v.merk, v.model, v.kenteken
+      FROM lessons l
+      JOIN students s ON l.student_id = s.id
+      JOIN instructeurs i ON l.instructeur_id = i.id
+      LEFT JOIN vehicles v ON l.vehicle_id = v.id
+      WHERE l.datum = CURRENT_DATE
+      ORDER BY l.tijd
+    `
+    
+    const result = await pool.query(query)
+    
+    res.json({
+      success: true,
+      data: result.rows
+    })
+    
+  } catch (error) {
+    console.error("Get today lessons error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen lessen van vandaag" 
+    })
+  }
+}
+
+// Get week lessons
+const getWeekLessons = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        l.*,
+        s.naam as student_naam,
+        i.naam as instructeur_naam,
+        v.merk, v.model, v.kenteken
+      FROM lessons l
+      JOIN students s ON l.student_id = s.id
+      JOIN instructeurs i ON l.instructeur_id = i.id
+      LEFT JOIN vehicles v ON l.vehicle_id = v.id
+      WHERE l.datum >= CURRENT_DATE 
+        AND l.datum <= CURRENT_DATE + INTERVAL '7 days'
+      ORDER BY l.datum, l.tijd
+    `
+    
+    const result = await pool.query(query)
+    
+    res.json({
+      success: true,
+      data: result.rows
+    })
+    
+  } catch (error) {
+    console.error("Get week lessons error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen lessen van deze week" 
+    })
+  }
+}
+
+// Get month lessons
+const getMonthLessons = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        l.*,
+        s.naam as student_naam,
+        i.naam as instructeur_naam,
+        v.merk, v.model, v.kenteken
+      FROM lessons l
+      JOIN students s ON l.student_id = s.id
+      JOIN instructeurs i ON l.instructeur_id = i.id
+      LEFT JOIN vehicles v ON l.vehicle_id = v.id
+      WHERE l.datum >= CURRENT_DATE 
+        AND l.datum <= CURRENT_DATE + INTERVAL '30 days'
+      ORDER BY l.datum, l.tijd
+    `
+    
+    const result = await pool.query(query)
+    
+    res.json({
+      success: true,
+      data: result.rows
+    })
+    
+  } catch (error) {
+    console.error("Get month lessons error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij ophalen lessen van deze maand" 
+    })
+  }
+}
+
+// Check conflicts
+const checkConflicts = async (req, res) => {
+  try {
+    const { datum, tijd, instructeur_id, vehicle_id, exclude_lesson_id } = req.query
+    
+    if (!datum || !tijd || !instructeur_id) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Datum, tijd en instructeur_id zijn verplicht!" 
+      })
+    }
+    
+    let conflictQuery = `
+      SELECT 
+        l.*,
+        s.naam as student_naam,
+        i.naam as instructeur_naam,
+        v.merk, v.model, v.kenteken
+      FROM lessons l
+      JOIN students s ON l.student_id = s.id
+      JOIN instructeurs i ON l.instructeur_id = i.id
+      LEFT JOIN vehicles v ON l.vehicle_id = v.id
+      WHERE l.datum = $1 AND l.tijd = $2 
+      AND (l.instructeur_id = $3 OR (l.vehicle_id = $4 AND $4 IS NOT NULL))
+      AND l.status NOT IN ('Geannuleerd')
+    `
+    
+    let params = [datum, tijd, instructeur_id, vehicle_id]
+    
+    if (exclude_lesson_id) {
+      conflictQuery += ' AND l.id != $5'
+      params.push(exclude_lesson_id)
+    }
+    
+    const result = await pool.query(conflictQuery, params)
+    
+    res.json({
+      success: true,
+      conflicts: result.rows.length > 0,
+      data: result.rows
+    })
+    
+  } catch (error) {
+    console.error("Check conflicts error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij controleren conflicten" 
+    })
+  }
+}
+
+// Update lesson status only
+const updateLesStatus = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+    
+    if (!status) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Status is verplicht!" 
+      })
+    }
+    
+    const validStatuses = ['Gepland', 'Bevestigd', 'Voltooid', 'Geannuleerd']
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Ongeldige status!" 
+      })
+    }
+    
+    const updateQuery = `
+      UPDATE lessons 
+      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `
+    
+    const result = await pool.query(updateQuery, [status, id])
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Les niet gevonden!" 
+      })
+    }
+    
+    res.json({
+      success: true,
+      message: "Les status succesvol bijgewerkt!",
+      data: result.rows[0]
+    })
+    
+  } catch (error) {
+    console.error("Update lesson status error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij bijwerken les status" 
+    })
+  }
+}
+
+// Bulk create lessons (placeholder)
+const createBulkLessons = async (req, res) => {
+  try {
+    res.status(501).json({
+      success: false,
+      message: "Bulk create functionaliteit nog niet geïmplementeerd"
+    })
+  } catch (error) {
+    console.error("Bulk create lessons error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij bulk aanmaken lessen" 
+    })
+  }
+}
+
+// Bulk update lessons (placeholder)
+const updateBulkLessons = async (req, res) => {
+  try {
+    res.status(501).json({
+      success: false,
+      message: "Bulk update functionaliteit nog niet geïmplementeerd"
+    })
+  } catch (error) {
+    console.error("Bulk update lessons error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij bulk bijwerken lessen" 
+    })
+  }
+}
+
+// Bulk delete lessons (placeholder)
+const deleteBulkLessons = async (req, res) => {
+  try {
+    res.status(501).json({
+      success: false,
+      message: "Bulk delete functionaliteit nog niet geïmplementeerd"
+    })
+  } catch (error) {
+    console.error("Bulk delete lessons error:", error)
+    res.status(500).json({ 
+      success: false,
+      message: "Server error bij bulk verwijderen lessen" 
+    })
+  }
+}
+
 module.exports = {
   getAllLessen,
   getLesById,
   createLes,
   updateLes,
-  deleteLes
+  deleteLes,
+  getTodayLessons,
+  getWeekLessons,
+  getMonthLessons,
+  checkConflicts,
+  updateLesStatus,
+  createBulkLessons,
+  updateBulkLessons,
+  deleteBulkLessons
 }
