@@ -2,51 +2,40 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
-import { useRouter, usePathname } from "next/navigation"
-import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+import { usePathname } from "next/navigation"
 
 interface AuthGuardProps {
   children: React.ReactNode
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const router = useRouter()
+  const { isAuthenticated, loading } = useAuth()
   const pathname = usePathname()
 
-  useEffect(() => {
-    const token = localStorage.getItem("token")
-    const user = localStorage.getItem("user")
+  // Define paths that do not require authentication
+  const publicPaths = ["/login", "/register"]
+  const isPublicPath = publicPaths.includes(pathname)
 
-    // Define paths that do not require authentication
-    const publicPaths = ["/login", "/register"]
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
-    if (token && user) {
-      setIsAuthenticated(true)
-      // If on a public path and authenticated, redirect to dashboard
-      if (publicPaths.includes(pathname)) {
-        router.push("/")
-      }
-    } else {
-      setIsAuthenticated(false)
-      // If not authenticated and trying to access a protected path, redirect to login
-      if (!publicPaths.includes(pathname)) {
-        toast({
-          title: "Niet geautoriseerd",
-          description: "U moet inloggen om deze pagina te bekijken.",
-          variant: "destructive",
-        })
-        router.push("/login")
-      }
-    }
-  }, [pathname, router])
-
-  // Render children only if authenticated or if it's a public path
-  if (isAuthenticated || ["/login", "/register"].includes(pathname)) {
+  // Allow public paths regardless of authentication status
+  if (isPublicPath) {
     return <>{children}</>
   }
 
-  // Optionally, render a loading spinner or null while checking auth status
+  // For protected paths, only render if authenticated
+  if (isAuthenticated) {
+    return <>{children}</>
+  }
+
+  // This case should be handled by the auth context redirecting to login
   return null
 }
