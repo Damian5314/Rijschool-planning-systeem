@@ -3,7 +3,8 @@
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { Calendar, Car, ClipboardList, DollarSign, Home, Settings, Users, BarChart2 } from "lucide-react"
+import { Calendar, Car, ClipboardList, DollarSign, Home, Settings, Users, BarChart2, User } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 import {
   Sidebar,
@@ -22,6 +23,7 @@ import { LogoutButton } from "./logout-button"
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { user, isAdmin, isInstructeur } = useAuth()
 
   const navItems = [
     {
@@ -125,6 +127,17 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-4">
         <SidebarMenu>
+          {user && (
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-1 text-sm">
+                <User className="h-4 w-4" />
+                <div className="flex flex-col">
+                  <span className="font-medium">{user.naam}</span>
+                  <span className="text-xs text-muted-foreground capitalize">{user.rol}</span>
+                </div>
+              </div>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <LogoutButton />
           </SidebarMenuItem>
