@@ -28,7 +28,8 @@ async function testConnection() {
     client.release()
   } catch (err) {
     console.error('❌ Database verbinding fout:', err.message)
-    process.exit(1)
+    console.warn('⚠️ Server draait zonder database verbinding - controleer DATABASE_URL in .env')
+    // Continue without database for now
   }
 }
 
