@@ -83,6 +83,7 @@ export default function RootLayout({
         
         {/* iOS specific meta tags */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Willes-Rijschool" />
         
@@ -94,9 +95,7 @@ export default function RootLayout({
           <ClientLayout>{children}</ClientLayout>
         </div>
         
-        {/* Toast notifications */}
-        <Toaster />
-        <Sonner />
+        {/* Toast notifications are handled in ClientLayout */}
         
         {/* Skip to main content link for accessibility */}
         <a 
