@@ -9,6 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Phone,
   Mail,
@@ -24,8 +27,27 @@ import {
   Plus,
   ArrowLeft,
 } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { toast } from "@/hooks/use-toast"
+import { toast } from "sonner"
+
+interface Student {
+  id: number
+  name: string
+  email: string
+  phone: string
+  address: string
+  postcode: string
+  plaats: string
+  dateOfBirth: string
+  licenseType: string
+  transmissie: string
+  status: string
+  instructor: string
+}
+
+interface Instructor {
+  id: string
+  name: string
+}
 
 // Mock data - replace with API call
 const mockLeerlingData = {
@@ -145,23 +167,51 @@ export default function StudentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const studentId = params.id as string
-  const [student, setStudent] = useState<Student | null>(null)
+  const [leerling, setLeerling] = useState<any>(null)
   const [instructors, setInstructors] = useState<Instructor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const leerlingId = parseInt(params.id)
+    const leerlingId = parseInt(params.id as string)
     const gevondenLeerling = mockLeerlingData[leerlingId as keyof typeof mockLeerlingData]
 
     if (gevondenLeerling) {
       setLeerling(gevondenLeerling)
+      setLoading(false)
     } else {
-      toast({
-        title: "Fout",
-        description: `Kon studentgegevens niet opslaan: ${err.message}`,
-        variant: "destructive",
-      })
+      setError("Leerling niet gevonden")
+      setLoading(false)
+    }
+  }, [params.id])
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault()
+    toast.success("Wijzigingen opgeslagen", {
+      description: "De leerlinggegevens zijn succesvol bijgewerkt.",
+    })
+  }
+
+  const handleUpdateTegoed = () => {
+    toast.info("Tegoed bijwerken", {
+      description: "Functionaliteit komt binnenkort beschikbaar.",
+    })
+  }
+
+  const handleAddNote = () => {
+    toast.info("Notitie toevoegen", {
+      description: "Functionaliteit komt binnenkort beschikbaar.",
+    })
+  }
+
+  const getRijlesColor = (type: string) => {
+    switch (type) {
+      case "les":
+        return "bg-blue-100 text-blue-800"
+      case "examen":
+        return "bg-green-100 text-green-800"
+      default:
+        return "bg-gray-100 text-gray-800"
     }
   }
 
@@ -173,8 +223,8 @@ export default function StudentDetailPage() {
     return <div className="flex justify-center items-center h-screen text-red-500">Fout: {error}</div>
   }
 
-  if (!student) {
-    return <div className="flex justify-center items-center h-screen">Student niet gevonden.</div>
+  if (!leerling) {
+    return <div className="flex justify-center items-center h-screen">Leerling niet gevonden.</div>
   }
 
   return (
@@ -184,99 +234,56 @@ export default function StudentDetailPage() {
           <ArrowLeft className="h-4 w-4" />
           <span className="sr-only">Terug</span>
         </Button>
-        <h1 className="text-lg font-semibold md:text-2xl">Student: {student.name}</h1>
+        <h1 className="text-lg font-semibold md:text-2xl">Leerling: {leerling.naam}</h1>
       </div>
 
-      <form onSubmit={handleSave} className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Persoonlijke Gegevens</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label htmlFor="name">Naam</Label>
-              <Input id="name" name="name" defaultValue={student.name} required />
-            </div>
-            <div>
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" name="email" type="email" defaultValue={student.email} required />
-            </div>
-            <div>
-              <Label htmlFor="phone">Telefoon</Label>
-              <Input id="phone" name="phone" defaultValue={student.phone} required />
-            </div>
-            <div>
-              <Label htmlFor="address">Adres</Label>
-              <Input id="address" name="address" defaultValue={student.address} />
-            </div>
-            <div>
-              <Label htmlFor="postcode">Postcode</Label>
-              <Input id="postcode" name="postcode" defaultValue={student.postcode} />
-            </div>
-            <div>
-              <Label htmlFor="plaats">Plaats</Label>
-              <Input id="plaats" name="plaats" defaultValue={student.plaats} />
-            </div>
-            <div>
-              <Label htmlFor="dateOfBirth">Geboortedatum</Label>
-              <Input id="dateOfBirth" name="dateOfBirth" type="date" defaultValue={student.dateOfBirth} />
-            </div>
-            <div>
-              <Label htmlFor="licenseType">Rijbewijs Type</Label>
-              <Select name="licenseType" defaultValue={student.licenseType} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecteer type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="B">B (Personenauto)</SelectItem>
-                  <SelectItem value="A">A (Motor)</SelectItem>
-                  <SelectItem value="AM">AM (Bromfiets)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="transmission">Transmissie</Label>
-              <Select name="transmission" defaultValue={student.transmissie} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecteer transmissie" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Handgeschakeld">Handgeschakeld</SelectItem>
-                  <SelectItem value="Automaat">Automaat</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="instructor">Instructeur</Label>
-              <Select name="instructor" defaultValue={student.instructor}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecteer instructeur" />
-                </SelectTrigger>
-                <SelectContent>
-                  {instructors.map((instr) => (
-                    <SelectItem key={instr.id} value={instr.id}>
-                      {instr.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select name="status" defaultValue={student.status} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecteer status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Actief">Actief</SelectItem>
-                  <SelectItem value="Inactief">Inactief</SelectItem>
-                  <SelectItem value="Gepauzeerd">Gepauzeerd</SelectItem>
-                  <SelectItem value="Afgestudeerd">Afgestudeerd</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Linker kolom - Basis info */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="h-5 w-5" />
+                <span>Persoonlijke Gegevens</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Naam:</span>
+                <span className="font-medium">{leerling.naam}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Email:</span>
+                <span className="font-medium">{leerling.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Telefoon:</span>
+                <span className="font-medium">{leerling.telefoon}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Adres:</span>
+                <span className="font-medium">{leerling.adres}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Postcode:</span>
+                <span className="font-medium">{leerling.postcode}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Plaats:</span>
+                <span className="font-medium">{leerling.plaats}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Transmissie:</span>
+                <span className="font-medium">{leerling.transmissie}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Status:</span>
+                <Badge className={leerling.status === "Actief" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                  {leerling.status}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
