@@ -28,32 +28,12 @@ import {
   ChevronDown,
   Building,
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 
 export function Sidebar() {
   const pathname = usePathname()
-  const router = useRouter()
-  const { toast } = useToast()
-  const [userInfo, setUserInfo] = useState({
-    name: "Leon Wilson",
-    email: "leon@rijschool.nl",
-    role: "Eigenaar",
-    rijschool: "Rijschool De Veilige Weg"
-  })
-
-  useEffect(() => {
-    // Get user info from localStorage
-    const email = localStorage.getItem("userEmail")
-    const role = localStorage.getItem("userRole")
-    
-    if (email) {
-      setUserInfo(prev => ({
-        ...prev,
-        email,
-        role: role || "Gebruiker"
-      }))
-    }
-  }, [])
+  const { user, logout } = useAuth()
 
   const navigation = [
     {
@@ -113,16 +93,7 @@ export function Sidebar() {
   ]
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn")
-    localStorage.removeItem("userRole")
-    localStorage.removeItem("userEmail")
-    
-    toast({
-      title: "Uitgelogd",
-      description: "Je bent succesvol uitgelogd.",
-    })
-    
-    router.push("/login")
+    logout()
   }
 
   const getInitials = (name: string) => {
@@ -183,15 +154,15 @@ export function Sidebar() {
               <div className="flex items-center space-x-3 w-full">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm">
-                    {getInitials(userInfo.name)}
+                    {getInitials(user?.naam || "User")}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-left">
                   <div className="text-sm font-medium text-gray-900 truncate">
-                    {userInfo.name}
+                    {user?.naam || "User"}
                   </div>
                   <div className="text-xs text-gray-500 truncate">
-                    {userInfo.role}
+                    {user?.rol || "gebruiker"}
                   </div>
                 </div>
                 <ChevronDown className="h-4 w-4 text-gray-400" />
@@ -201,10 +172,10 @@ export function Sidebar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{userInfo.name}</p>
-                <p className="text-xs text-gray-500">{userInfo.email}</p>
+                <p className="text-sm font-medium">{user?.naam || "User"}</p>
+                <p className="text-xs text-gray-500">{user?.email || ""}</p>
                 <Badge variant="secondary" className="w-fit text-xs">
-                  {userInfo.role}
+                  {user?.rol || "gebruiker"}
                 </Badge>
               </div>
             </DropdownMenuLabel>
