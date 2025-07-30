@@ -12,7 +12,20 @@
       "Bash(pkill:*)",
       "Bash(npm run lint)",
       "Bash(npm start)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx next lint:*)",
+      "Bash(npx tsc:*)",
+      "Bash(grep:*)",
+      "Bash(cd:*)",
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "Bash(touch:*)",
+      "Bash(rm:*)",
+      "Bash(kill:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": []
   }
