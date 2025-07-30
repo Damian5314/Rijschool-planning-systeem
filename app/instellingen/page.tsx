@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Building, Clock, Bell, Database, Save, Download, Upload } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Building, Clock, Bell, Database, Save, Download, Upload, Euro } from "lucide-react"
+import { toast } from "sonner"
 
 interface OpeningsTijden {
   [key: string]: {
@@ -47,7 +47,6 @@ interface RijschoolSettings {
 }
 
 export default function Instellingen() {
-  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<RijschoolSettings>({
     rijschoolNaam: "Rijschool De Veilige Weg",
@@ -91,8 +90,7 @@ export default function Instellingen() {
 
   const handleSave = () => {
     // Hier zou je de instellingen opslaan naar de backend
-    toast({
-      title: "Instellingen opgeslagen",
+    toast.success("Instellingen opgeslagen", {
       description: "Alle instellingen zijn succesvol opgeslagen.",
     })
     console.log("Instellingen opgeslagen:", settings)
@@ -110,22 +108,19 @@ export default function Instellingen() {
     linkElement.setAttribute('download', exportFileDefaultName)
     linkElement.click()
     
-    toast({
-      title: "Export gestart",
+    toast.success("Export gestart", {
       description: "Instellingen worden geëxporteerd...",
     })
   }
 
   const handleImportBackup = () => {
-    toast({
-      title: "Import functie",
+    toast.info("Import functie", {
       description: "Backup import functionaliteit wordt binnenkort toegevoegd.",
     })
   }
 
   const handleDownloadBackup = () => {
-    toast({
-      title: "Download gestart",
+    toast.success("Download gestart", {
       description: "Backup wordt gedownload...",
     })
   }
@@ -385,7 +380,7 @@ export default function Instellingen() {
         <Card className="card-hover glass-effect">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <Badge className="h-5 w-5 text-yellow-600" />
+              <Euro className="h-5 w-5 text-yellow-600" />
               <CardTitle>Prijzen</CardTitle>
             </div>
             <CardDescription>Stel de prijzen in voor lessen en examens</CardDescription>
@@ -429,9 +424,6 @@ export default function Instellingen() {
         {/* Notificaties */}
         <Card className="card-hover glass-effect">
           <CardHeader>
-            <CardTitle>Notificaties</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4">
             <div className="flex items-center space-x-2">
               <Bell className="h-5 w-5 text-purple-600" />
               <CardTitle>Notificatie Instellingen</CardTitle>
@@ -446,47 +438,18 @@ export default function Instellingen() {
               </div>
               <Switch
                 checked={settings.emailNotificaties}
-                onCheckedChange={(checked) =>
-                  handleChange({
-                    target: {
-                      name: "emailNotificaties",
-                      value: checked,
-                      type: "checkbox",
-                      checked: checked as boolean,
-                    },
-                  } as React.ChangeEvent<HTMLInputElement>)
-                }
+                onCheckedChange={(checked) => setSettings({ ...settings, emailNotificaties: checked })}
               />
-              <Label htmlFor="emailNotificaties">E-mail Notificaties inschakelen</Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="smsNotificaties"
-                name="smsNotificaties"
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>SMS Notificaties</Label>
+                <p className="text-sm text-muted-foreground">Verstuur SMS herinneringen naar leerlingen</p>
+              </div>
+              <Switch
                 checked={settings.smsNotificaties}
-                onCheckedChange={(checked) =>
-                  handleChange({
-                    target: {
-                      name: "smsNotificaties",
-                      value: checked,
-                      type: "checkbox",
-                      checked: checked as boolean,
-                    },
-                  } as React.ChangeEvent<HTMLInputElement>)
-                }
-              />
-              <Label htmlFor="smsNotificaties">SMS Notificaties inschakelen</Label>
-            </div>
-            <div>
-              <Label htmlFor="herinneringVoorExamen">Herinnering voor examen (uur van tevoren)</Label>
-              <Input
-                id="herinneringVoorExamen"
-                name="herinneringVoorExamen"
-                type="number"
-                value={settings.herinneringVoorExamen}
-                onChange={handleChange}
-                min="0"
-                required
+                onCheckedChange={(checked) => setSettings({ ...settings, smsNotificaties: checked })}
               />
             </div>
 
@@ -535,12 +498,9 @@ export default function Instellingen() {
         {/* Systeem Instellingen  */}
         <Card className="card-hover glass-effect">
           <CardHeader>
-            <CardTitle>Data & Backup</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4">
             <div className="flex items-center space-x-2">
               <Database className="h-5 w-5 text-indigo-600" />
-              <CardTitle>Systeem Instellingen</CardTitle>
+              <CardTitle>Data & Backup</CardTitle>
             </div>
             <CardDescription>Backup en data beheer instellingen</CardDescription>
           </CardHeader>
@@ -552,18 +512,8 @@ export default function Instellingen() {
               </div>
               <Switch
                 checked={settings.automatischeBackup}
-                onCheckedChange={(checked) =>
-                  handleChange({
-                    target: {
-                      name: "automatischeBackup",
-                      value: checked,
-                      type: "checkbox",
-                      checked: checked as boolean,
-                    },
-                  } as React.ChangeEvent<HTMLInputElement>)
-                }
+                onCheckedChange={(checked) => setSettings({ ...settings, automatischeBackup: checked })}
               />
-              <Label htmlFor="automatischeBackup">Automatische Backup inschakelen</Label>
             </div>
 
             {settings.automatischeBackup && (
@@ -609,10 +559,13 @@ export default function Instellingen() {
           </CardContent>
         </Card>
 
-        <Button type="submit" className="w-full md:w-auto">
-          Instellingen Opslaan
-        </Button>
-      </form>
+        <div className="flex justify-end">
+          <Button onClick={handleSave} className="w-full md:w-auto bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
+            <Save className="mr-2 h-4 w-4" />
+            Instellingen Opslaan
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
