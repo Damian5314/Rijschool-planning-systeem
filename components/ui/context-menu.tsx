@@ -30,7 +30,7 @@ ContextMenuContent.displayName = ContextMenuPrimitive.Content.displayName
 const ContextMenuItem = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> &
-    Pick<ContextMenuPrimitive.MenuItemProps, "onSelect" | "disabled"> & {
+    {
       inset?: boolean
     }
 >(({ className, inset, ...props }, ref) => (
