@@ -9,7 +9,10 @@
       "Bash(node server.js)",
       "Bash(curl:*)",
       "Bash(cat:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(npm run lint)",
+      "Bash(npm start)",
+      "Bash(cd:*)"
     ],
     "deny": []
   }

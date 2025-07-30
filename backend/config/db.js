@@ -9,7 +9,7 @@ const pool = new Pool({
   },
   max: 20, // maximum aantal verbindingen in de pool
   idleTimeoutMillis: 30000, // hoe lang een verbinding idle mag zijn
-  connectionTimeoutMillis: 2000, // hoe lang wachten op een verbinding
+  connectionTimeoutMillis: 10000, // hoe lang wachten op een verbinding
 })
 
 // Test database connectie en maak tabellen als ze niet bestaan
