@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -36,11 +34,30 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (password !== confirmPassword) {
+    if (!acceptTerms || !acceptPrivacy) {
+      toast({
+        title: "Voorwaarden accepteren",
+        description: "Je moet de algemene voorwaarden en privacyverklaring accepteren",
+        variant: "destructive",
+      })
       return
     }
 
-    if (password.length < 6) {
+    if (registerData.password !== registerData.confirmPassword) {
+      toast({
+        title: "Wachtwoorden komen niet overeen",
+        description: "Controleer je wachtwoord en probeer opnieuw",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (registerData.password.length < 6) {
+      toast({
+        title: "Wachtwoord te kort",
+        description: "Het wachtwoord moet minimaal 6 karakters bevatten",
+        variant: "destructive",
+      })
       return
     }
 
@@ -193,4 +210,3 @@ export default function RegisterPage() {
     </div>
   )
 }
-//test

@@ -1,446 +1,554 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle, Edit, Trash2, CalendarIcon } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { 
+  Plus, Search, Filter, Calendar as CalendarIcon, 
+  ChevronLeft, ChevronRight, Clock, User, Car, 
+  Edit, Trash2, MapPin 
+} from "lucide-react"
+import { format, addDays, startOfWeek, endOfWeek } from "date-fns"
 import { nl } from "date-fns/locale"
-import { toast } from "@/components/ui/use-toast"
-import type { Lesson, Student, Instructor, Vehicle } from "@/lib/data" // Import interfaces
+import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
-export default function PlanningPage() {
-  const [lessons, setLessons] = useState<Lesson[]>([])
-  const [students, setStudents] = useState<Student[]>([])
-  const [instructors, setInstructors] = useState<Instructor[]>([])
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+interface Afspraak {
+  id: string
+  type: 'les' | 'examen' | 'intake'
+  leerling: string
+  instructeur: string
+  datum: string
+  tijd: string
+  duur: number
+  transmissie: 'Automaat' | 'Schakel'
+  voertuig?: string
+  locatie?: string
+  opmerkingen?: string
+  status: 'gepland' | 'bevestigd' | 'voltooid' | 'geannuleerd'
+}
+
+interface NewAfspraak {
+  type: string
+  leerling: string
+  instructeur: string
+  datum: Date | undefined
+  startTijd: string
+  eindTijd: string
+  voertuig: string
+  opmerkingen: string
+}
+
+export default function Planning() {
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [viewMode, setViewMode] = useState<'dag' | 'week'>('week')
+  const [selectedInstructeur, setSelectedInstructeur] = useState('alle')
+  const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null)
-  const [date, setDate] = useState<Date | undefined>(undefined)
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    fetchLessons()
-    fetchStudents()
-    fetchInstructors()
-    fetchVehicles()
-  }, [])
+  // Form state
+  const [newAfspraak, setNewAfspraak] = useState<NewAfspraak>({
+    type: '',
+    leerling: '',
+    instructeur: '',
+    datum: undefined,
+    startTijd: '09:00',
+    eindTijd: '10:00',
+    voertuig: '',
+    opmerkingen: ''
+  })
 
-  const fetchLessons = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setLessons(
-        data.map((item: any) => ({
-          id: item._id,
-          studentId: item.student,
-          instructorId: item.instructeur,
-          vehicleId: "mock-vehicle-id", // Placeholder as vehicle is not directly linked in lesson model yet
-          date: new Date(item.datum).toISOString().split("T")[0],
-          time: item.tijd,
-          duration: item.duur,
-          type: item.type,
-          status: "scheduled", // Assuming all fetched lessons are scheduled
-          notes: item.opmerkingen,
-          location: "N.v.t.", // Placeholder
-        })),
-      )
-    } catch (error) {
-      console.error("Fout bij het ophalen van lessen:", error)
-      toast({
-        title: "Fout",
-        description: "Kon lessen niet ophalen.",
-        variant: "destructive",
-      })
+  // Mock data - replace with API calls
+  const [afspraken, setAfspraken] = useState<Afspraak[]>([
+    {
+      id: '1',
+      type: 'les',
+      leerling: 'Emma van der Berg',
+      instructeur: 'Jan Bakker',
+      datum: format(new Date(), 'yyyy-MM-dd'),
+      tijd: '09:00',
+      duur: 60,
+      transmissie: 'Automaat',
+      voertuig: 'VW Polo',
+      status: 'gepland'
+    },
+    {
+      id: '2',
+      type: 'examen',
+      leerling: 'Tom Jansen',
+      instructeur: 'Lisa de Vries',
+      datum: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
+      tijd: '14:00',
+      duur: 90,
+      transmissie: 'Schakel',
+      voertuig: 'Toyota Yaris',
+      locatie: 'CBR Rotterdam',
+      status: 'bevestigd'
+    }
+  ])
+
+  const instructeurs = ['Jan Bakker', 'Lisa de Vries', 'Mark Peters', 'Sarah Jansen']
+  const leerlingen = ['Emma van der Berg', 'Tom Jansen', 'Sophie Willems', 'David Smit']
+  const voertuigen = ['VW Polo (Automaat)', 'Toyota Yaris (Schakel)', 'Opel Corsa (Automaat)']
+
+  const timeSlots = Array.from({ length: 12 }, (_, i) => {
+    const hour = 8 + i
+    return `${hour.toString().padStart(2, '0')}:00`
+  })
+
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i)
+    return {
+      date,
+      label: format(date, 'EEE d MMM', { locale: nl }),
+      shortLabel: format(date, 'EEE', { locale: nl }),
+      isToday: format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+    }
+  })
+
+  const filteredAfspraken = afspraken.filter(afspraak => {
+    const matchesInstructeur = selectedInstructeur === 'alle' || afspraak.instructeur === selectedInstructeur
+    const matchesSearch = afspraak.leerling.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         afspraak.instructeur.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesInstructeur && matchesSearch
+  })
+
+  const getAfsprakenForDateAndTime = (date: Date, tijd: string) => {
+    const dateStr = format(date, 'yyyy-MM-dd')
+    return filteredAfspraken.filter(a => a.datum === dateStr && a.tijd === tijd)
+  }
+
+  const getAfsprakenForDate = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd')
+    return filteredAfspraken.filter(a => a.datum === dateStr).sort((a, b) => a.tijd.localeCompare(b.tijd))
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'gepland': return 'bg-blue-100 text-blue-800'
+      case 'bevestigd': return 'bg-green-100 text-green-800'
+      case 'voltooid': return 'bg-gray-100 text-gray-800'
+      case 'geannuleerd': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
     }
   }
 
-  const fetchStudents = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setStudents(
-        data.map((item: any) => ({
-          id: item._id,
-          name: item.naam,
-          email: item.email,
-          phone: item.telefoon,
-          address: item.adres,
-          dateOfBirth: item.geboortedatum ? new Date(item.geboortedatum).toISOString().split("T")[0] : "",
-          licenseType: item.rijbewijsType,
-          startDate: new Date(item.datumAangemaakt).toISOString().split("T")[0],
-          instructor: item.instructeur,
-          lessonCount: item.lesGeschiedenis.length,
-          theoryPassed: item.examens.some((exam: any) => exam.type === "Theorie" && exam.resultaat === "Geslaagd"),
-          practicalExamDate: item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")
-            ?.datum
-            ? new Date(
-                item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")?.datum,
-              )
-                .toISOString()
-                .split("T")[0]
-            : undefined,
-          status: item.status,
-          progress: (item.lesGeschiedenis.length / 40) * 100,
-          nextLesson: "N.v.t.",
-          avatar: "/placeholder-user.jpg",
-          postcode: item.postcode,
-          plaats: item.plaats,
-          transmissie: item.transmissie,
-          financieel: item.financieel,
-        })),
-      )
-    } catch (error) {
-      console.error("Fout bij het ophalen van leerlingen:", error)
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'les': return 'bg-blue-500'
+      case 'examen': return 'bg-red-500'
+      case 'intake': return 'bg-purple-500'
+      default: return 'bg-gray-500'
     }
   }
 
-  const fetchInstructors = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setInstructors(
-        data.map((item: any) => ({
-          id: item._id,
-          name: item.naam,
-          email: item.email,
-          phone: item.telefoon,
-          specialization: item.rijbewijsType,
-          experience: 0,
-          rating: 0,
-          availability: [],
-          students: 0,
-        })),
-      )
-    } catch (error) {
-      console.error("Fout bij het ophalen van instructeurs:", error)
-    }
-  }
-
-  const fetchVehicles = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/vehicles`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setVehicles(
-        data.map((item: any) => ({
-          id: item._id,
-          brand: item.merk,
-          model: item.model,
-          year: item.bouwjaar,
-          licensePlate: item.kenteken,
-          type: item.transmissie === "Handgeschakeld" ? "manual" : "automatic",
-          fuelType: item.brandstof,
-          mileage: item.kilometerstand,
-          lastMaintenance: item.laatsteOnderhoud ? new Date(item.laatsteOnderhoud).toISOString().split("T")[0] : "",
-          nextMaintenance: item.volgendeOnderhoud ? new Date(item.volgendeOnderhoud).toISOString().split("T")[0] : "",
-          keuringDate: item.apkDatum ? new Date(item.apkDatum).toISOString().split("T")[0] : "",
-          status: item.status,
-          instructor: item.instructeur,
-          image: "/placeholder.svg", // Placeholder
-        })),
-      )
-    } catch (error) {
-      console.error("Fout bij het ophalen van voertuigen:", error)
-    }
-  }
-
-  const handleAddLesson = () => {
-    setCurrentLesson(null)
-    setDate(undefined)
-    setIsDialogOpen(true)
-  }
-
-  const handleEditLesson = (lesson: Lesson) => {
-    setCurrentLesson(lesson)
-    setDate(new Date(lesson.date))
-    setIsDialogOpen(true)
-  }
-
-  const handleDeleteLesson = async (id: string) => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      setLessons(lessons.filter((lesson) => lesson.id !== id))
-      toast({
-        title: "Les verwijderd",
-        description: `Les is succesvol verwijderd.`,
-      })
-    } catch (error) {
-      console.error("Fout bij het verwijderen van les:", error)
-      toast({
-        title: "Fout",
-        description: "Kon les niet verwijderen.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const formData = new FormData(e.target as HTMLFormElement)
-    const lessonData = {
-      datum: date ? date.toISOString() : "",
-      tijd: formData.get("time") as string,
-      duur: Number.parseInt(formData.get("duration") as string),
-      student: formData.get("studentId") as string,
-      instructeur: formData.get("instructorId") as string,
-      type: formData.get("type") as string,
-      opmerkingen: formData.get("notes") as string,
+  const handleCreateAfspraak = async () => {
+    if (!newAfspraak.leerling || !newAfspraak.instructeur || !newAfspraak.datum) {
+      toast.error('Vul alle verplichte velden in')
+      return
     }
 
+    setLoading(true)
+    
     try {
-      let response
-      if (currentLesson) {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons/${currentLesson.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(lessonData),
-        })
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        toast({
-          title: "Les bijgewerkt",
-          description: `Les is succesvol bijgewerkt.`,
-        })
-      } else {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/lessons`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(lessonData),
-        })
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        toast({
-          title: "Les toegevoegd",
-          description: `Nieuwe les is succesvol toegevoegd.`,
-        })
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const afspraak: Afspraak = {
+        id: Date.now().toString(),
+        type: newAfspraak.type as 'les' | 'examen' | 'intake',
+        leerling: newAfspraak.leerling,
+        instructeur: newAfspraak.instructeur,
+        datum: format(newAfspraak.datum, 'yyyy-MM-dd'),
+        tijd: newAfspraak.startTijd,
+        duur: 60, // Calculate from start/end time
+        transmissie: 'Automaat', // Should come from student data
+        voertuig: newAfspraak.voertuig,
+        opmerkingen: newAfspraak.opmerkingen,
+        status: 'gepland'
       }
+
+      setAfspraken(prev => [...prev, afspraak])
       setIsDialogOpen(false)
-      fetchLessons() // Refresh the list
-    } catch (error) {
-      console.error("Fout bij opslaan les:", error)
-      toast({
-        title: "Fout",
-        description: "Kon les niet opslaan.",
-        variant: "destructive",
+      setNewAfspraak({
+        type: '',
+        leerling: '',
+        instructeur: '',
+        datum: undefined,
+        startTijd: '09:00',
+        eindTijd: '10:00',
+        voertuig: '',
+        opmerkingen: ''
       })
+      
+      toast.success('Afspraak succesvol aangemaakt')
+    } catch (error) {
+      toast.error('Fout bij aanmaken afspraak')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getStudentName = (studentId: string) => {
-    return students.find((s) => s.id === studentId)?.name || "Onbekende student"
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    const days = direction === 'next' ? 7 : -7
+    setCurrentDate(prev => addDays(prev, days))
   }
 
-  const getInstructorName = (instructorId: string) => {
-    return instructors.find((i) => i.id === instructorId)?.name || "Onbekende instructeur"
-  }
-
-  const getVehicleInfo = (vehicleId: string) => {
-    const vehicle = vehicles.find((v) => v.id === vehicleId)
-    return vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.licensePlate})` : "N.v.t."
+  const goToToday = () => {
+    setCurrentDate(new Date())
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">Lesplanning</h1>
-        <Button className="ml-auto" onClick={handleAddLesson}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nieuwe Les
-        </Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Overzicht Lessen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Datum</TableHead>
-                <TableHead>Tijd</TableHead>
-                <TableHead>Duur (min)</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Instructeur</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Opmerkingen</TableHead>
-                <TableHead className="text-right">Acties</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lessons.map((lesson) => (
-                <TableRow key={lesson.id}>
-                  <TableCell>{format(new Date(lesson.date), "dd-MM-yyyy", { locale: nl })}</TableCell>
-                  <TableCell>{lesson.time}</TableCell>
-                  <TableCell>{lesson.duration}</TableCell>
-                  <TableCell>{getStudentName(lesson.studentId)}</TableCell>
-                  <TableCell>{getInstructorName(lesson.instructorId)}</TableCell>
-                  <TableCell>{lesson.type}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">{lesson.notes || "-"}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditLesson(lesson)} className="mr-2">
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Bewerken</span>
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteLesson(lesson.id)}>
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Verwijderen</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Planning</h1>
+            <p className="text-gray-600">Beheer lessen, examens en afspraken</p>
+          </div>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Nieuwe Afspraak
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Nieuwe Afspraak</DialogTitle>
+                <DialogDescription>Plan een nieuwe les, examen of intake</DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="type">Type *</Label>
+                  <Select value={newAfspraak.type} onValueChange={(value) => setNewAfspraak(prev => ({ ...prev, type: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="les">Rijles</SelectItem>
+                      <SelectItem value="examen">Praktijkexamen</SelectItem>
+                      <SelectItem value="intake">Intake gesprek</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{currentLesson ? "Les Bewerken" : "Nieuwe Les Toevoegen"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="date" className="text-right">
-                Datum
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
+                <div>
+                  <Label htmlFor="leerling">Leerling *</Label>
+                  <Select value={newAfspraak.leerling} onValueChange={(value) => setNewAfspraak(prev => ({ ...prev, leerling: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer leerling" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leerlingen.map(leerling => (
+                        <SelectItem key={leerling} value={leerling}>{leerling}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="instructeur">Instructeur *</Label>
+                  <Select value={newAfspraak.instructeur} onValueChange={(value) => setNewAfspraak(prev => ({ ...prev, instructeur: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer instructeur" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instructeurs.map(instructeur => (
+                        <SelectItem key={instructeur} value={instructeur}>{instructeur}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Datum *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !newAfspraak.datum && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {newAfspraak.datum ? format(newAfspraak.datum, "dd MMM yyyy", { locale: nl }) : "Selecteer datum"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={newAfspraak.datum}
+                        onSelect={(date) => setNewAfspraak(prev => ({ ...prev, datum: date }))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="startTijd">Start tijd</Label>
+                    <Select value={newAfspraak.startTijd} onValueChange={(value) => setNewAfspraak(prev => ({ ...prev, startTijd: value }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map(tijd => (
+                          <SelectItem key={tijd} value={tijd}>{tijd}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="eindTijd">Eind tijd</Label>
+                    <Select value={newAfspraak.eindTijd} onValueChange={(value) => setNewAfspraak(prev => ({ ...prev, eindTijd: value }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map(tijd => (
+                          <SelectItem key={tijd} value={tijd}>{tijd}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="voertuig">Voertuig</Label>
+                  <Select value={newAfspraak.voertuig} onValueChange={(value) => setNewAfspraak(prev => ({ ...prev, voertuig: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer voertuig" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {voertuigen.map(voertuig => (
+                        <SelectItem key={voertuig} value={voertuig}>{voertuig}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="opmerkingen">Opmerkingen</Label>
+                  <Textarea
+                    placeholder="Extra opmerkingen..."
+                    value={newAfspraak.opmerkingen}
+                    onChange={(e) => setNewAfspraak(prev => ({ ...prev, opmerkingen: e.target.value }))}
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Annuleren
+                </Button>
+                <Button onClick={handleCreateAfspraak} disabled={loading}>
+                  {loading ? 'Aanmaken...' : 'Afspraak aanmaken'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Filters en Controls */}
+        <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+          <CardContent className="pt-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+              <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex items-center space-x-2">
+                  <Search className="h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Zoek leerling of instructeur..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-64"
+                  />
+                </div>
+                
+                <Select value={selectedInstructeur} onValueChange={setSelectedInstructeur}>
+                  <SelectTrigger className="w-48">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alle">Alle instructeurs</SelectItem>
+                    {instructeurs.map(instructeur => (
+                      <SelectItem key={instructeur} value={instructeur}>{instructeur}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center space-x-1">
                   <Button
-                    variant={"outline"}
-                    className={`col-span-3 justify-start text-left font-normal ${!date && "text-muted-foreground"}`}
+                    variant={viewMode === 'dag' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('dag')}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP", { locale: nl }) : <span>Kies een datum</span>}
+                    Dag
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus locale={nl} />
-                </PopoverContent>
-              </Popover>
+                  <Button
+                    variant={viewMode === 'week' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('week')}
+                  >
+                    Week
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday}>
+                  Vandaag
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium min-w-40 text-center">
+                  {format(currentDate, 'MMMM yyyy', { locale: nl })}
+                </span>
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="time" className="text-right">
-                Tijd
-              </Label>
-              <Input
-                id="time"
-                name="time"
-                type="time"
-                defaultValue={currentLesson?.time}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="duration" className="text-right">
-                Duur (min)
-              </Label>
-              <Input
-                id="duration"
-                name="duration"
-                type="number"
-                defaultValue={currentLesson?.duration || 60}
-                className="col-span-3"
-                min="15"
-                step="15"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="studentId" className="text-right">
-                Student
-              </Label>
-              <Select name="studentId" defaultValue={currentLesson?.studentId} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name}
-                    </SelectItem>
+          </CardContent>
+        </Card>
+
+        {/* Planning Grid */}
+        <Card className="bg-white/70 backdrop-blur-sm border-white/20">
+          <CardHeader>
+            <CardTitle>
+              {viewMode === 'week' ? 'Weekplanning' : 'Dagplanning'}
+            </CardTitle>
+            <CardDescription>
+              {viewMode === 'week' 
+                ? `Week van ${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'd MMM', { locale: nl })} - ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'd MMM yyyy', { locale: nl })}`
+                : format(currentDate, 'EEEE d MMMM yyyy', { locale: nl })
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {viewMode === 'week' ? (
+              <div className="overflow-x-auto">
+                <div className="min-w-full">
+                  {/* Header */}
+                  <div className="grid grid-cols-8 gap-px bg-gray-200 rounded-t-lg overflow-hidden">
+                    <div className="bg-gray-50 p-3 font-medium text-center">Tijd</div>
+                    {weekDays.map(day => (
+                      <div key={day.label} className={cn(
+                        "bg-gray-50 p-3 font-medium text-center",
+                        day.isToday && "bg-blue-50 text-blue-600"
+                      )}>
+                        <div>{day.shortLabel}</div>
+                        <div className="text-xs text-gray-500">{format(day.date, 'd MMM')}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Time slots */}
+                  {timeSlots.map(tijd => (
+                    <div key={tijd} className="grid grid-cols-8 gap-px bg-gray-200">
+                      <div className="bg-white p-3 font-medium text-gray-600 text-center border-r">
+                        <Clock className="h-4 w-4 inline mr-1" />
+                        {tijd}
+                      </div>
+                      {weekDays.map(day => {
+                        const afspraken = getAfsprakenForDateAndTime(day.date, tijd)
+                        return (
+                          <div key={`${tijd}-${day.label}`} className="bg-white p-2 min-h-16 border-r border-b">
+                            {afspraken.map(afspraak => (
+                              <div key={afspraak.id} className="mb-1 last:mb-0">
+                                <div className={cn(
+                                  "text-xs p-2 rounded cursor-pointer hover:shadow-md transition-shadow",
+                                  getTypeColor(afspraak.type), "text-white"
+                                )}>
+                                  <div className="font-medium truncate">{afspraak.leerling}</div>
+                                  <div className="opacity-90 truncate">{afspraak.instructeur}</div>
+                                  {afspraak.voertuig && (
+                                    <div className="opacity-75 truncate text-xs">{afspraak.voertuig}</div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="instructorId" className="text-right">
-                Instructeur
-              </Label>
-              <Select name="instructorId" defaultValue={currentLesson?.instructorId} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer instructeur" />
-                </SelectTrigger>
-                <SelectContent>
-                  {instructors.map((instructor) => (
-                    <SelectItem key={instructor.id} value={instructor.id}>
-                      {instructor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">
-                Type Les
-              </Label>
-              <Select name="type" defaultValue={currentLesson?.type || "Rijles"} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Rijles">Rijles</SelectItem>
-                  <SelectItem value="Examen">Examen</SelectItem>
-                  <SelectItem value="Intake">Intake</SelectItem>
-                  <SelectItem value="Anders">Anders</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="notes" className="text-right">
-                Opmerkingen
-              </Label>
-              <Textarea id="notes" name="notes" defaultValue={currentLesson?.notes || ""} className="col-span-3" />
-            </div>
-            <DialogFooter>
-              <Button type="submit">{currentLesson ? "Opslaan" : "Toevoegen"}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+                </div>
+              </div>
+            ) : (
+              // Day view
+              <div className="space-y-4">
+                {timeSlots.map(tijd => {
+                  const afspraken = getAfsprakenForDateAndTime(currentDate, tijd)
+                  return (
+                    <div key={tijd} className="flex items-start space-x-4 p-4 border rounded-lg">
+                      <div className="w-16 text-sm font-medium text-gray-600">
+                        {tijd}
+                      </div>
+                      <div className="flex-1">
+                        {afspraken.length > 0 ? (
+                          <div className="space-y-2">
+                            {afspraken.map(afspraak => (
+                              <div key={afspraak.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                <div className={cn("w-3 h-3 rounded-full", getTypeColor(afspraak.type))} />
+                                <div className="flex-1">
+                                  <div className="font-medium">{afspraak.leerling}</div>
+                                  <div className="text-sm text-gray-600">{afspraak.instructeur}</div>
+                                  {afspraak.voertuig && (
+                                    <div className="text-xs text-gray-500">{afspraak.voertuig}</div>
+                                  )}
+                                </div>
+                                <Badge className={getStatusColor(afspraak.status)}>
+                                  {afspraak.status}
+                                </Badge>
+                                <div className="flex items-center space-x-1">
+                                  <Button variant="ghost" size="sm">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 italic">Geen afspraken</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
-//test

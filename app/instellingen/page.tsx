@@ -1,248 +1,450 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { toast } from "@/components/ui/use-toast"
-import { type RijschoolSettings, rijschoolSettings as defaultSettings } from "@/lib/data"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+import { Building, Clock, Bell, Database, Save, Download, Upload } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
-export default function InstellingenPage() {
-  const [settings, setSettings] = useState<RijschoolSettings>(defaultSettings)
+interface OpeningsTijden {
+  [key: string]: {
+    open: string
+    dicht: string
+    gesloten: boolean
+  }
+}
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type, checked } = e.target as HTMLInputElement
-    if (name.startsWith("openingstijden.")) {
-      const [_, day, field] = name.split(".")
-      setSettings((prevSettings) => ({
-        ...prevSettings,
-        openingstijden: {
-          ...prevSettings.openingstijden,
-          [day]: {
-            ...prevSettings.openingstijden[day as keyof typeof prevSettings.openingstijden],
-            [field]: type === "checkbox" ? checked : value,
-          },
-        },
-      }))
-    } else {
-      setSettings((prevSettings) => ({
-        ...prevSettings,
-        [name]: type === "checkbox" ? checked : value,
-      }))
-    }
+interface RijschoolSettings {
+  rijschoolNaam: string
+  kvkNummer: string
+  adres: string
+  postcode: string
+  plaats: string
+  telefoon: string
+  email: string
+  website: string
+  lesDuur: number
+  examenDuur: number
+  pauzeMinuten: number
+  openingstijden: OpeningsTijden
+  prijsAutomaat: number
+  prijsSchakel: number
+  prijsExamen: number
+  emailNotificaties: boolean
+  smsNotificaties: boolean
+  herinneringVoorExamen: number
+  herinneringVoorLes: number
+  automatischeBackup: boolean
+  backupTijd: string
+  dataRetentie: number
+}
+
+export default function Instellingen() {
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [settings, setSettings] = useState<RijschoolSettings>({
+    rijschoolNaam: "Rijschool De Veilige Weg",
+    kvkNummer: "12345678",
+    adres: "Hoofdstraat 123",
+    postcode: "1234 AB",
+    plaats: "Amsterdam",
+    telefoon: "020-1234567",
+    email: "info@rijschool.nl",
+    website: "www.rijschool.nl",
+    lesDuur: 60,
+    examenDuur: 90,
+    pauzeMinuten: 15,
+    openingstijden: {
+      maandag: { open: "08:00", dicht: "18:00", gesloten: false },
+      dinsdag: { open: "08:00", dicht: "18:00", gesloten: false },
+      woensdag: { open: "08:00", dicht: "18:00", gesloten: false },
+      donderdag: { open: "08:00", dicht: "18:00", gesloten: false },
+      vrijdag: { open: "08:00", dicht: "18:00", gesloten: false },
+      zaterdag: { open: "09:00", dicht: "17:00", gesloten: false },
+      zondag: { open: "09:00", dicht: "17:00", gesloten: true },
+    },
+    prijsAutomaat: 48,
+    prijsSchakel: 45,
+    prijsExamen: 120,
+    emailNotificaties: true,
+    smsNotificaties: false,
+    herinneringVoorExamen: 24,
+    herinneringVoorLes: 2,
+    automatischeBackup: true,
+    backupTijd: "02:00",
+    dataRetentie: 365,
+  })
+
+  useEffect(() => {
+    // Simuleer laden van instellingen
+    setTimeout(() => {
+      setLoading(false)
+    }, 1000)
+  }, [])
+
+  const handleSave = () => {
+    // Hier zou je de instellingen opslaan naar de backend
+    toast({
+      title: "Instellingen opgeslagen",
+      description: "Alle instellingen zijn succesvol opgeslagen.",
+    })
+    console.log("Instellingen opgeslagen:", settings)
   }
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault()
-    // In a real application, you would send this data to your backend API
-    console.log("Instellingen opgeslagen:", settings)
+  const handleExport = () => {
+    // Mock export functionaliteit
+    const dataStr = JSON.stringify(settings, null, 2)
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
+    
+    const exportFileDefaultName = `rijschool-instellingen-${new Date().toISOString().split('T')[0]}.json`
+    
+    const linkElement = document.createElement('a')
+    linkElement.setAttribute('href', dataUri)
+    linkElement.setAttribute('download', exportFileDefaultName)
+    linkElement.click()
+    
     toast({
-      title: "Instellingen Opgeslagen",
-      description: "Uw rijschoolinstellingen zijn succesvol bijgewerkt.",
+      title: "Export gestart",
+      description: "Instellingen worden geëxporteerd...",
     })
   }
 
-  return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">Instellingen</h1>
+  const handleImportBackup = () => {
+    toast({
+      title: "Import functie",
+      description: "Backup import functionaliteit wordt binnenkort toegevoegd.",
+    })
+  }
+
+  const handleDownloadBackup = () => {
+    toast({
+      title: "Download gestart",
+      description: "Backup wordt gedownload...",
+    })
+  }
+
+  const dagen = [
+    { key: "maandag", label: "Maandag" },
+    { key: "dinsdag", label: "Dinsdag" },
+    { key: "woensdag", label: "Woensdag" },
+    { key: "donderdag", label: "Donderdag" },
+    { key: "vrijdag", label: "Vrijdag" },
+    { key: "zaterdag", label: "Zaterdag" },
+    { key: "zondag", label: "Zondag" },
+  ]
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid gap-6">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-64 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
-      <form onSubmit={handleSave} className="grid gap-6">
-        <Card>
+    )
+  }
+
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          Instellingen
+        </h2>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" />
+            Exporteren
+          </Button>
+          <Button onClick={handleSave} className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
+            <Save className="mr-2 h-4 w-4" />
+            Opslaan
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-6">
+        {/* Rijschool Informatie */}
+        <Card className="card-hover glass-effect">
           <CardHeader>
-            <CardTitle>Algemene Informatie</CardTitle>
+            <div className="flex items-center space-x-2">
+              <Building className="h-5 w-5 text-blue-600" />
+              <CardTitle>Rijschool Informatie</CardTitle>
+            </div>
+            <CardDescription>Algemene informatie over {settings.rijschoolNaam}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label htmlFor="rijschoolNaam">Rijschool Naam</Label>
-              <Input
-                id="rijschoolNaam"
-                name="rijschoolNaam"
-                value={settings.rijschoolNaam}
-                onChange={handleChange}
-                required
-              />
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="rijschoolNaam">Rijschool Naam</Label>
+                <Input
+                  id="rijschoolNaam"
+                  value={settings.rijschoolNaam}
+                  onChange={(e) => setSettings({ ...settings, rijschoolNaam: e.target.value })}
+                  className="bg-white/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kvkNummer">KvK Nummer</Label>
+                <Input
+                  id="kvkNummer"
+                  value={settings.kvkNummer}
+                  onChange={(e) => setSettings({ ...settings, kvkNummer: e.target.value })}
+                  className="bg-white/50"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="adres">Adres</Label>
-              <Input id="adres" name="adres" value={settings.adres} onChange={handleChange} required />
+              <Input
+                id="adres"
+                value={settings.adres}
+                onChange={(e) => setSettings({ ...settings, adres: e.target.value })}
+                className="bg-white/50"
+              />
             </div>
-            <div>
-              <Label htmlFor="postcode">Postcode</Label>
-              <Input id="postcode" name="postcode" value={settings.postcode} onChange={handleChange} required />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="postcode">Postcode</Label>
+                <Input
+                  id="postcode"
+                  value={settings.postcode}
+                  onChange={(e) => setSettings({ ...settings, postcode: e.target.value })}
+                  className="bg-white/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="plaats">Plaats</Label>
+                <Input
+                  id="plaats"
+                  value={settings.plaats}
+                  onChange={(e) => setSettings({ ...settings, plaats: e.target.value })}
+                  className="bg-white/50"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="plaats">Plaats</Label>
-              <Input id="plaats" name="plaats" value={settings.plaats} onChange={handleChange} required />
-            </div>
-            <div>
-              <Label htmlFor="telefoon">Telefoon</Label>
-              <Input id="telefoon" name="telefoon" value={settings.telefoon} onChange={handleChange} required />
-            </div>
-            <div>
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" name="email" type="email" value={settings.email} onChange={handleChange} required />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="telefoon">Telefoon</Label>
+                <Input
+                  id="telefoon"
+                  value={settings.telefoon}
+                  onChange={(e) => setSettings({ ...settings, telefoon: e.target.value })}
+                  className="bg-white/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={settings.email}
+                  onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                  className="bg-white/50"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="website">Website</Label>
-              <Input id="website" name="website" value={settings.website} onChange={handleChange} />
-            </div>
-            <div>
-              <Label htmlFor="kvkNummer">KVK Nummer</Label>
-              <Input id="kvkNummer" name="kvkNummer" value={settings.kvkNummer} onChange={handleChange} required />
-            </div>
-            <div>
-              <Label htmlFor="btwNummer">BTW Nummer</Label>
-              <Input id="btwNummer" name="btwNummer" value={settings.btwNummer || ""} onChange={handleChange} />
-            </div>
-            <div>
-              <Label htmlFor="iban">IBAN</Label>
-              <Input id="iban" name="iban" value={settings.iban || ""} onChange={handleChange} />
+              <Input
+                id="website"
+                value={settings.website}
+                onChange={(e) => setSettings({ ...settings, website: e.target.value })}
+                className="bg-white/50"
+              />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Planning Instellingen */}
+        <Card className="card-hover glass-effect">
           <CardHeader>
-            <CardTitle>Openingstijden</CardTitle>
+            <div className="flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-green-600" />
+              <CardTitle>Planning Instellingen</CardTitle>
+            </div>
+            <CardDescription>Configureer openingstijden en lesduur</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            {Object.entries(settings.openingstijden).map(([day, times]) => (
-              <div key={day} className="grid grid-cols-4 items-center gap-4">
-                <Label className="capitalize">{day}</Label>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`gesloten-${day}`}
-                    name={`openingstijden.${day}.gesloten`}
-                    checked={times.gesloten}
-                    onCheckedChange={(checked) =>
-                      handleChange({
-                        target: {
-                          name: `openingstijden.${day}.gesloten`,
-                          value: checked,
-                          type: "checkbox",
-                          checked: checked as boolean,
-                        },
-                      } as React.ChangeEvent<HTMLInputElement>)
-                    }
-                  />
-                  <Label htmlFor={`gesloten-${day}`}>Gesloten</Label>
-                </div>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="lesDuur">Les Duur (minuten)</Label>
                 <Input
-                  type="time"
-                  name={`openingstijden.${day}.open`}
-                  value={times.open}
-                  onChange={handleChange}
-                  disabled={times.gesloten}
-                />
-                <Input
-                  type="time"
-                  name={`openingstijden.${day}.dicht`}
-                  value={times.dicht}
-                  onChange={handleChange}
-                  disabled={times.gesloten}
+                  id="lesDuur"
+                  type="number"
+                  value={settings.lesDuur}
+                  onChange={(e) => setSettings({ ...settings, lesDuur: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
                 />
               </div>
-            ))}
+              <div className="space-y-2">
+                <Label htmlFor="examenDuur">Examen Duur (minuten)</Label>
+                <Input
+                  id="examenDuur"
+                  type="number"
+                  value={settings.examenDuur}
+                  onChange={(e) => setSettings({ ...settings, examenDuur: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pauzeMinuten">Pauze tussen lessen (minuten)</Label>
+                <Input
+                  id="pauzeMinuten"
+                  type="number"
+                  value={settings.pauzeMinuten}
+                  onChange={(e) => setSettings({ ...settings, pauzeMinuten: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">Openingstijden</h4>
+              {dagen.map((dag) => (
+                <div key={dag.key} className="flex items-center space-x-4">
+                  <div className="w-20 text-sm font-medium">{dag.label}</div>
+                  <Switch
+                    checked={!settings.openingstijden[dag.key].gesloten}
+                    onCheckedChange={(checked) => {
+                      setSettings({
+                        ...settings,
+                        openingstijden: {
+                          ...settings.openingstijden,
+                          [dag.key]: {
+                            ...settings.openingstijden[dag.key],
+                            gesloten: !checked,
+                          },
+                        },
+                      })
+                    }}
+                  />
+                  {!settings.openingstijden[dag.key].gesloten && (
+                    <>
+                      <Input
+                        type="time"
+                        value={settings.openingstijden[dag.key].open}
+                        onChange={(e) => {
+                          setSettings({
+                            ...settings,
+                            openingstijden: {
+                              ...settings.openingstijden,
+                              [dag.key]: {
+                                ...settings.openingstijden[dag.key],
+                                open: e.target.value,
+                              },
+                            },
+                          })
+                        }}
+                        className="w-24 bg-white/50"
+                      />
+                      <span className="text-sm text-muted-foreground">tot</span>
+                      <Input
+                        type="time"
+                        value={settings.openingstijden[dag.key].dicht}
+                        onChange={(e) => {
+                          setSettings({
+                            ...settings,
+                            openingstijden: {
+                              ...settings.openingstijden,
+                              [dag.key]: {
+                                ...settings.openingstijden[dag.key],
+                                dicht: e.target.value,
+                              },
+                            },
+                          })
+                        }}
+                        className="w-24 bg-white/50"
+                      />
+                    </>
+                  )}
+                  {settings.openingstijden[dag.key].gesloten && (
+                    <Badge variant="secondary">Gesloten</Badge>
+                  )}
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Prijzen */}
+        <Card className="card-hover glass-effect">
           <CardHeader>
-            <CardTitle>Les- en Exameninstellingen</CardTitle>
+            <div className="flex items-center space-x-2">
+              <Badge className="h-5 w-5 text-yellow-600" />
+              <CardTitle>Prijzen</CardTitle>
+            </div>
+            <CardDescription>Stel de prijzen in voor lessen en examens</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label htmlFor="lesDuur">Standaard Lesduur (minuten)</Label>
-              <Input
-                id="lesDuur"
-                name="lesDuur"
-                type="number"
-                value={settings.lesDuur}
-                onChange={handleChange}
-                min="15"
-                step="15"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="examenDuur">Standaard Examenduur (minuten)</Label>
-              <Input
-                id="examenDuur"
-                name="examenDuur"
-                type="number"
-                value={settings.examenDuur}
-                onChange={handleChange}
-                min="30"
-                step="15"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="pauzeMinuten">Pauze tussen lessen (minuten)</Label>
-              <Input
-                id="pauzeMinuten"
-                name="pauzeMinuten"
-                type="number"
-                value={settings.pauzeMinuten}
-                onChange={handleChange}
-                min="0"
-                step="5"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="prijsAutomaat">Prijs per les Automaat (€)</Label>
-              <Input
-                id="prijsAutomaat"
-                name="prijsAutomaat"
-                type="number"
-                value={settings.prijsAutomaat}
-                onChange={handleChange}
-                step="0.01"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="prijsSchakel">Prijs per les Schakel (€)</Label>
-              <Input
-                id="prijsSchakel"
-                name="prijsSchakel"
-                type="number"
-                value={settings.prijsSchakel}
-                onChange={handleChange}
-                step="0.01"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="prijsExamen">Prijs Examen (€)</Label>
-              <Input
-                id="prijsExamen"
-                name="prijsExamen"
-                type="number"
-                value={settings.prijsExamen}
-                onChange={handleChange}
-                step="0.01"
-                required
-              />
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="prijsAutomaat">Prijs Automaat Les (€)</Label>
+                <Input
+                  id="prijsAutomaat"
+                  type="number"
+                  value={settings.prijsAutomaat}
+                  onChange={(e) => setSettings({ ...settings, prijsAutomaat: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prijsSchakel">Prijs Schakel Les (€)</Label>
+                <Input
+                  id="prijsSchakel"
+                  type="number"
+                  value={settings.prijsSchakel}
+                  onChange={(e) => setSettings({ ...settings, prijsSchakel: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prijsExamen">Prijs Examen (€)</Label>
+                <Input
+                  id="prijsExamen"
+                  type="number"
+                  value={settings.prijsExamen}
+                  onChange={(e) => setSettings({ ...settings, prijsExamen: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Notificaties */}
+        <Card className="card-hover glass-effect">
           <CardHeader>
             <CardTitle>Notificaties</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="flex items-center space-x-2">
-              <Checkbox
-                id="emailNotificaties"
-                name="emailNotificaties"
+              <Bell className="h-5 w-5 text-purple-600" />
+              <CardTitle>Notificatie Instellingen</CardTitle>
+            </div>
+            <CardDescription>Configureer automatische herinneringen</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Email Notificaties</Label>
+                <p className="text-sm text-muted-foreground">Verstuur email herinneringen naar leerlingen</p>
+              </div>
+              <Switch
                 checked={settings.emailNotificaties}
                 onCheckedChange={(checked) =>
                   handleChange({
@@ -287,30 +489,68 @@ export default function InstellingenPage() {
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="herinneringVoorLes">Herinnering voor les (uur van tevoren)</Label>
-              <Input
-                id="herinneringVoorLes"
-                name="herinneringVoorLes"
-                type="number"
-                value={settings.herinneringVoorLes}
-                onChange={handleChange}
-                min="0"
-                required
-              />
+
+            <Separator />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="herinneringVoorExamen">Herinnering voor examen (uren)</Label>
+                <Select
+                  value={settings.herinneringVoorExamen.toString()}
+                  onValueChange={(value) => setSettings({ ...settings, herinneringVoorExamen: Number.parseInt(value) })}
+                >
+                  <SelectTrigger className="bg-white/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2">2 uur</SelectItem>
+                    <SelectItem value="4">4 uur</SelectItem>
+                    <SelectItem value="12">12 uur</SelectItem>
+                    <SelectItem value="24">24 uur</SelectItem>
+                    <SelectItem value="48">48 uur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="herinneringVoorLes">Herinnering voor les (uren)</Label>
+                <Select
+                  value={settings.herinneringVoorLes.toString()}
+                  onValueChange={(value) => setSettings({ ...settings, herinneringVoorLes: Number.parseInt(value) })}
+                >
+                  <SelectTrigger className="bg-white/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 uur</SelectItem>
+                    <SelectItem value="2">2 uur</SelectItem>
+                    <SelectItem value="4">4 uur</SelectItem>
+                    <SelectItem value="12">12 uur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Systeem Instellingen  */}
+        <Card className="card-hover glass-effect">
           <CardHeader>
             <CardTitle>Data & Backup</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="flex items-center space-x-2">
-              <Checkbox
-                id="automatischeBackup"
-                name="automatischeBackup"
+              <Database className="h-5 w-5 text-indigo-600" />
+              <CardTitle>Systeem Instellingen</CardTitle>
+            </div>
+            <CardDescription>Backup en data beheer instellingen</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Automatische Backup</Label>
+                <p className="text-sm text-muted-foreground">Maak dagelijks automatisch een backup</p>
+              </div>
+              <Switch
                 checked={settings.automatischeBackup}
                 onCheckedChange={(checked) =>
                   handleChange({
@@ -325,29 +565,46 @@ export default function InstellingenPage() {
               />
               <Label htmlFor="automatischeBackup">Automatische Backup inschakelen</Label>
             </div>
-            <div>
-              <Label htmlFor="backupTijd">Backup Tijd</Label>
-              <Input
-                id="backupTijd"
-                name="backupTijd"
-                type="time"
-                value={settings.backupTijd}
-                onChange={handleChange}
-                disabled={!settings.automatischeBackup}
-                required
-              />
-            </div>
-            <div>
+
+            {settings.automatischeBackup && (
+              <div className="space-y-2">
+                <Label htmlFor="backupTijd">Backup Tijd</Label>
+                <Input
+                  id="backupTijd"
+                  type="time"
+                  value={settings.backupTijd}
+                  onChange={(e) => setSettings({ ...settings, backupTijd: e.target.value })}
+                  className="w-32 bg-white/50"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
               <Label htmlFor="dataRetentie">Data Retentie (dagen)</Label>
               <Input
                 id="dataRetentie"
                 name="dataRetentie"
                 type="number"
                 value={settings.dataRetentie}
-                onChange={handleChange}
-                min="30"
-                required
+                onChange={(e) => setSettings({ ...settings, dataRetentie: Number.parseInt(e.target.value) })}
+                className="w-32 bg-white/50"
               />
+              <p className="text-sm text-muted-foreground">
+                Hoe lang data bewaard wordt voordat het automatisch wordt verwijderd
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" onClick={handleImportBackup} className="bg-white/50">
+                <Upload className="mr-2 h-4 w-4" />
+                Backup Importeren
+              </Button>
+              <Button variant="outline" onClick={handleDownloadBackup} className="bg-white/50">
+                <Download className="mr-2 h-4 w-4" />
+                Backup Downloaden
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -359,4 +616,3 @@ export default function InstellingenPage() {
     </div>
   )
 }
-//test

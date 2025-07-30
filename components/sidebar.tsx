@@ -1,148 +1,228 @@
 "use client"
 
-import * as React from "react"
-import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Calendar, Car, ClipboardList, DollarSign, Home, Settings, Users, BarChart2, User } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
-
+import { usePathname, useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarSeparator,
-} from "@/components/ui/sidebar"
-import { LogoutButton } from "./logout-button"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Home,
+  Users,
+  Calendar,
+  Car,
+  Award,
+  FileText,
+  BarChart3,
+  Settings,
+  LogOut,
+  User,
+  ChevronDown,
+  Building,
+} from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
-export function AppSidebar() {
+export function Sidebar() {
   const pathname = usePathname()
-  const { user, isAdmin, isInstructeur } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [userInfo, setUserInfo] = useState({
+    name: "Leon Wilson",
+    email: "leon@rijschool.nl",
+    role: "Eigenaar",
+    rijschool: "Rijschool De Veilige Weg"
+  })
 
-  const navItems = [
+  useEffect(() => {
+    // Get user info from localStorage
+    const email = localStorage.getItem("userEmail")
+    const role = localStorage.getItem("userRole")
+    
+    if (email) {
+      setUserInfo(prev => ({
+        ...prev,
+        email,
+        role: role || "Gebruiker"
+      }))
+    }
+  }, [])
+
+  const navigation = [
     {
-      title: "Algemeen",
-      items: [
-        {
-          href: "/",
-          icon: Home,
-          text: "Dashboard",
-        },
-        {
-          href: "/planning",
-          icon: Calendar,
-          text: "Planning",
-        },
-        {
-          href: "/leerlingen",
-          icon: Users,
-          text: "Leerlingen",
-        },
-        {
-          href: "/instructeurs",
-          icon: ClipboardList,
-          text: "Instructeurs",
-        },
-        {
-          href: "/voertuigen",
-          icon: Car,
-          text: "Voertuigen",
-        },
-      ],
+      name: "Dashboard",
+      href: "/",
+      icon: Home,
+      current: pathname === "/",
     },
     {
-      title: "Financieel",
-      items: [
-        {
-          href: "/facturatie",
-          icon: DollarSign,
-          text: "Facturatie",
-        },
-      ],
+      name: "Planning",
+      href: "/planning",
+      icon: Calendar,
+      current: pathname === "/planning",
     },
     {
-      title: "Rapportage",
-      items: [
-        {
-          href: "/statistieken",
-          icon: BarChart2,
-          text: "Statistieken",
-        },
-        {
-          href: "/examens",
-          icon: ClipboardList,
-          text: "Examens",
-        },
-      ],
+      name: "Leerlingen",
+      href: "/leerlingen",
+      icon: Users,
+      current: pathname.startsWith("/leerlingen"),
     },
     {
-      title: "Systeem",
-      items: [
-        {
-          href: "/instellingen",
-          icon: Settings,
-          text: "Instellingen",
-        },
-      ],
+      name: "Instructeurs",
+      href: "/instructeurs",
+      icon: User,
+      current: pathname.startsWith("/instructeurs"),
+    },
+    {
+      name: "Voertuigen",
+      href: "/voertuigen",
+      icon: Car,
+      current: pathname.startsWith("/voertuigen"),
+    },
+    {
+      name: "Examens",
+      href: "/examens",
+      icon: Award,
+      current: pathname.startsWith("/examens"),
+    },
+    {
+      name: "Facturatie",
+      href: "/facturatie",
+      icon: FileText,
+      current: pathname.startsWith("/facturatie"),
+    },
+    {
+      name: "Statistieken",
+      href: "/statistieken",
+      icon: BarChart3,
+      current: pathname.startsWith("/statistieken"),
+    },
+    {
+      name: "Instellingen",
+      href: "/instellingen",
+      icon: Settings,
+      current: pathname.startsWith("/instellingen"),
     },
   ]
 
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn")
+    localStorage.removeItem("userRole")
+    localStorage.removeItem("userEmail")
+    
+    toast({
+      title: "Uitgelogd",
+      description: "Je bent succesvol uitgelogd.",
+    })
+    
+    router.push("/login")
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+  }
+
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <Car className="h-6 w-6" />
-          <span className="text-lg">Rijschool Plansysteem</span>
-        </Link>
-      </SidebarHeader>
-      <SidebarContent>
-        {navItems.map((group, index) => (
-          <React.Fragment key={group.title}>
-            <SidebarGroup>
-              <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.items.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={pathname === item.href}>
-                        <Link href={item.href}>
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.text}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-            {index < navItems.length - 1 && <SidebarSeparator />}
-          </React.Fragment>
-        ))}
-      </SidebarContent>
-      <SidebarFooter className="p-4">
-        <SidebarMenu>
-          {user && (
-            <SidebarMenuItem>
-              <div className="flex items-center gap-2 px-2 py-1 text-sm">
-                <User className="h-4 w-4" />
-                <div className="flex flex-col">
-                  <span className="font-medium">{user.naam}</span>
-                  <span className="text-xs text-muted-foreground capitalize">{user.rol}</span>
+    <div className="flex h-full w-64 flex-col bg-white border-r border-gray-200 shadow-sm">
+      {/* Logo */}
+      <div className="flex h-16 items-center px-6 border-b border-gray-200">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <Building className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Willes-Rijschool</h1>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {navigation.map((item) => {
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                item.current
+                  ? "bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-r-2 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+              }`}
+            >
+              <Icon
+                className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${
+                  item.current ? "text-blue-600" : "text-gray-400 group-hover:text-gray-500"
+                }`}
+              />
+              {item.name}
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* User Profile */}
+      <div className="border-t border-gray-200 p-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-start h-auto p-3 hover:bg-gray-50"
+            >
+              <div className="flex items-center space-x-3 w-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm">
+                    {getInitials(userInfo.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {userInfo.name}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {userInfo.role}
+                  </div>
                 </div>
+                <ChevronDown className="h-4 w-4 text-gray-400" />
               </div>
-            </SidebarMenuItem>
-          )}
-          <SidebarMenuItem>
-            <LogoutButton />
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium">{userInfo.name}</p>
+                <p className="text-xs text-gray-500">{userInfo.email}</p>
+                <Badge variant="secondary" className="w-fit text-xs">
+                  {userInfo.role}
+                </Badge>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/instellingen" className="flex items-center">
+                <Settings className="h-4 w-4 mr-2" />
+                Instellingen
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+              <LogOut className="h-4 w-4 mr-2" />
+              Uitloggen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   )
 }

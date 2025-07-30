@@ -1,196 +1,409 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlusCircle, Edit, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "@/components/ui/use-toast"
-import type { Instructor } from "@/lib/data"
+import { Plus, Search, Edit, Trash2, Phone, Mail, Calendar, Users, Award } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
-export default function InstructeursPage() {
-  const [instructors, setInstructors] = useState<Instructor[]>([])
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+interface Instructeur {
+  id: number
+  naam: string
+  email: string
+  telefoon?: string
+  rijbewijs_type: string[]
+  status: string
+  aantal_studenten?: number
+  komende_lessen?: number
+  created_at: string
+}
+
+export default function Instructeurs() {
+  const { toast } = useToast()
+  const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [currentInstructor, setCurrentInstructor] = useState<Instructor | null>(null)
+  const [instructeurs, setInstructeurs] = useState<Instructeur[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const [newInstructeur, setNewInstructeur] = useState({
+    naam: "",
+    email: "",
+    telefoon: "",
+    rijbewijs_type: ["B"],
+    status: "Actief",
+  })
 
   useEffect(() => {
-    fetchInstructors()
+    loadInstructeurs()
   }, [])
 
-  const fetchInstructors = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setInstructors(
-        data.map((item: any) => ({
-          id: item._id,
-          name: item.naam,
-          email: item.email,
-          phone: item.telefoon,
-          specialization: item.rijbewijsType,
-          experience: 0, // Not in model, default to 0
-          rating: 0, // Not in model, default to 0
-          availability: [], // Not in model, default to empty
-          students: 0, // Not in model, default to 0
-        })),
-      )
-    } catch (error) {
-      console.error("Fout bij het ophalen van instructeurs:", error)
-      toast({
-        title: "Fout",
-        description: "Kon instructeurs niet ophalen.",
-        variant: "destructive",
-      })
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token')
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     }
   }
 
-  const handleAddInstructor = () => {
-    setCurrentInstructor(null)
-    setIsDialogOpen(true)
-  }
-
-  const handleEditInstructor = (instructor: Instructor) => {
-    setCurrentInstructor(instructor)
-    setIsDialogOpen(true)
-  }
-
-  const handleDeleteInstructor = async (id: string) => {
+  const loadInstructeurs = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs/${id}`, {
-        method: "DELETE",
+      const response = await fetch(`${API_BASE_URL}/instructeurs`, {
+        headers: getAuthHeaders(),
       })
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      setInstructors(instructors.filter((instructor) => instructor.id !== id))
-      toast({
-        title: "Instructeur verwijderd",
-        description: `Instructeur is succesvol verwijderd.`,
-      })
-    } catch (error) {
-      console.error("Fout bij het verwijderen van instructeur:", error)
-      toast({
-        title: "Fout",
-        description: "Kon instructeur niet verwijderen.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const formData = new FormData(e.target as HTMLFormElement)
-    const instructorData = {
-      naam: formData.get("name") as string,
-      email: formData.get("email") as string,
-      telefoon: formData.get("phone") as string,
-      rijbewijsType: formData.getAll("specialization") as string[], // Assuming multi-select or comma-separated
-    }
-
-    try {
-      let response
-      if (currentInstructor) {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs/${currentInstructor.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(instructorData),
-        })
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        toast({
-          title: "Instructeur bijgewerkt",
-          description: `Instructeur ${instructorData.naam} is succesvol bijgewerkt.`,
-        })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setInstructeurs(data.data || [])
       } else {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(instructorData),
+        toast({
+          title: "Fout bij laden",
+          description: "Kon instructeurs niet laden",
+          variant: "destructive",
         })
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
+      }
+    } catch (error) {
+      console.error('Error loading instructeurs:', error)
+      toast({
+        title: "Verbindingsfout",
+        description: "Kon geen verbinding maken met de server",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredInstructeurs = instructeurs.filter(
+    (instructeur) =>
+      instructeur.naam.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      instructeur.email.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Actief":
+        return "bg-green-100 text-green-800"
+      case "Inactief":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const getRijbewijsColor = (types: string[]) => {
+    if (types.length > 1) return "bg-purple-100 text-purple-800"
+    if (types.includes("A")) return "bg-orange-100 text-orange-800"
+    return "bg-blue-100 text-blue-800"
+  }
+
+  const addInstructeur = async () => {
+    if (!newInstructeur.naam || !newInstructeur.email) {
+      toast({
+        title: "Vereiste velden",
+        description: "Naam en email zijn verplicht",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/instructeurs`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newInstructeur),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setInstructeurs([...instructeurs, data.data])
+        setNewInstructeur({
+          naam: "",
+          email: "",
+          telefoon: "",
+          rijbewijs_type: ["B"],
+          status: "Actief",
+        })
+        setIsDialogOpen(false)
         toast({
           title: "Instructeur toegevoegd",
-          description: `Nieuwe instructeur ${instructorData.naam} is succesvol toegevoegd.`,
+          description: `${newInstructeur.naam} is succesvol toegevoegd.`,
+        })
+      } else {
+        toast({
+          title: "Fout bij toevoegen",
+          description: data.message || "Er ging iets mis",
+          variant: "destructive",
         })
       }
-      setIsDialogOpen(false)
-      fetchInstructors() // Refresh the list
     } catch (error) {
-      console.error("Fout bij opslaan instructeur:", error)
+      console.error('Error adding instructeur:', error)
       toast({
-        title: "Fout",
-        description: "Kon instructeur niet opslaan.",
+        title: "Verbindingsfout",
+        description: "Kon instructeur niet toevoegen",
         variant: "destructive",
       })
     }
+  }
+
+  const deleteInstructeur = async (id: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/instructeurs/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setInstructeurs(instructeurs.filter((i) => i.id !== id))
+        toast({
+          title: "Instructeur verwijderd",
+          description: "De instructeur is succesvol verwijderd.",
+        })
+      } else {
+        toast({
+          title: "Fout bij verwijderen",
+          description: data.message || "Er ging iets mis",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting instructeur:', error)
+      toast({
+        title: "Verbindingsfout",
+        description: "Kon instructeur niet verwijderen",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">Instructeurs</h1>
-        <Button className="ml-auto" onClick={handleAddInstructor}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nieuwe Instructeur
-        </Button>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Instructeurs</h2>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nieuwe Instructeur
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Nieuwe Instructeur Toevoegen</DialogTitle>
+              <DialogDescription>Voer de gegevens van de nieuwe instructeur in.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="naam" className="text-right">
+                  Naam
+                </Label>
+                <Input 
+                  id="naam" 
+                  className="col-span-3"
+                  value={newInstructeur.naam}
+                  onChange={(e) => setNewInstructeur({ ...newInstructeur, naam: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">
+                  Email
+                </Label>
+                <Input 
+                  id="email" 
+                  type="email" 
+                  className="col-span-3"
+                  value={newInstructeur.email}
+                  onChange={(e) => setNewInstructeur({ ...newInstructeur, email: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="telefoon" className="text-right">
+                  Telefoon
+                </Label>
+                <Input 
+                  id="telefoon" 
+                  className="col-span-3"
+                  value={newInstructeur.telefoon}
+                  onChange={(e) => setNewInstructeur({ ...newInstructeur, telefoon: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="rijbewijs" className="text-right">
+                  Rijbewijs
+                </Label>
+                <Select
+                  value={newInstructeur.rijbewijs_type[0]}
+                  onValueChange={(value) => setNewInstructeur({ ...newInstructeur, rijbewijs_type: [value] })}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Selecteer rijbewijs type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="B">B - Auto</SelectItem>
+                    <SelectItem value="A">A - Motor</SelectItem>
+                    <SelectItem value="C">C - Vrachtwagen</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" onClick={addInstructeur}>
+                Instructeur Toevoegen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Statistieken Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Totaal Instructeurs</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{instructeurs.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {instructeurs.filter((i) => i.status === "Actief").length} actief
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Gemiddeld Slagingspercentage</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">78%</div>
+            <p className="text-xs text-muted-foreground">Alle instructeurs</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Totaal Leerlingen</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {instructeurs.reduce((acc, i) => acc + (i.aantal_studenten || 0), 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">Actieve leerlingen</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Beschikbare Instructeurs</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{instructeurs.filter((i) => i.status === "Actief").length}</div>
+            <p className="text-xs text-muted-foreground">Voor nieuwe leerlingen</p>
+          </CardContent>
+        </Card>
       </div>
       <Card>
         <CardHeader>
           <CardTitle>Overzicht Instructeurs</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Naam</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Telefoon</TableHead>
-                <TableHead>Specialisatie</TableHead>
-                <TableHead className="text-right">Acties</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {instructors.map((instructor) => (
-                <TableRow key={instructor.id}>
-                  <TableCell>{instructor.name}</TableCell>
-                  <TableCell>{instructor.email}</TableCell>
-                  <TableCell>{instructor.phone}</TableCell>
-                  <TableCell>{instructor.specialization.join(", ")}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditInstructor(instructor)}
-                      className="mr-2"
-                    >
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Bewerken</span>
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteInstructor(instructor.id)}>
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Verwijderen</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-3 font-medium">Naam</th>
+                  <th className="text-left p-3 font-medium">Contact</th>
+                  <th className="text-left p-3 font-medium">Rijbewijs</th>
+                  <th className="text-left p-3 font-medium">Status</th>
+                  <th className="text-left p-3 font-medium">Leerlingen</th>
+                  <th className="text-left p-3 font-medium">Acties</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInstructeurs.map((instructeur) => (
+                  <tr key={instructeur.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3 font-medium">{instructeur.naam}</td>
+                    <td className="p-3">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-1">
+                          <Mail className="h-3 w-3" />
+                          <span className="text-sm">{instructeur.email}</span>
+                        </div>
+                        {instructeur.telefoon && (
+                          <div className="flex items-center space-x-1">
+                            <Phone className="h-3 w-3" />
+                            <span className="text-sm">{instructeur.telefoon}</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <Badge className={getRijbewijsColor(instructeur.rijbewijs_type)}>
+                        {instructeur.rijbewijs_type.join(", ")}
+                      </Badge>
+                    </td>
+                    <td className="p-3">
+                      <Badge className={getStatusColor(instructeur.status)}>{instructeur.status}</Badge>
+                    </td>
+                    <td className="p-3">{instructeur.aantal_studenten || 0}</td>
+                    <td className="p-3">
+                      <div className="flex items-center space-x-2">
+                        <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => deleteInstructeur(instructeur.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filteredInstructeurs.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              {searchTerm ? "Geen instructeurs gevonden" : "Nog geen instructeurs toegevoegd"}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -255,4 +468,3 @@ export default function InstructeursPage() {
     </div>
   )
 }
-//test

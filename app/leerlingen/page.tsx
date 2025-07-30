@@ -1,10 +1,6 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
-import Link from "next/link"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlusCircle, Edit, Trash2, Eye } from "lucide-react"
@@ -12,198 +8,234 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "@/components/ui/use-toast"
-import type { Student, Instructor } from "@/lib/data" // Assuming Instructor interface is also here
+import { Textarea } from "@/components/ui/textarea"
+import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, Eye, Euro } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
+
+interface Leerling {
+  id: number
+  naam: string
+  email: string
+  telefoon: string
+  transmissie: string
+  status: string
+  lessen: number
+  instructeur: string
+  startdatum: string
+  adres: string
+  postcode: string
+  plaats: string
+  tegoed: number
+}
+
+interface NewLeerling {
+  naam: string
+  email: string
+  telefoon: string
+  transmissie: string
+  instructeur: string
+  adres: string
+  postcode: string
+  plaats: string
+  geboortedatum: string
+  opmerkingen: string
+}
 
 export default function LeerlingenPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [instructors, setInstructors] = useState<Instructor[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [currentStudent, setCurrentStudent] = useState<Student | null>(null)
+  const [isAdresDialogOpen, setIsAdresDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
+  const [newLeerling, setNewLeerling] = useState<NewLeerling>({
+    naam: "",
+    email: "",
+    telefoon: "",
+    transmissie: "",
+    instructeur: "",
+    adres: "",
+    postcode: "",
+    plaats: "",
+    geboortedatum: "",
+    opmerkingen: "",
+  })
+
+  const [leerlingen, setLeerlingen] = useState<Leerling[]>([])
+
+  // Mock data laden
   useEffect(() => {
-    fetchStudents()
-    fetchInstructors()
+    const mockLeerlingen: Leerling[] = [
+      {
+        id: 1,
+        naam: "Emma van der Berg",
+        email: "emma@email.com",
+        telefoon: "06-12345678",
+        transmissie: "Automaat",
+        status: "Actief",
+        lessen: 15,
+        instructeur: "Jan Bakker",
+        startdatum: "2024-01-15",
+        adres: "Hoofdstraat 123",
+        postcode: "1234 AB",
+        plaats: "Amsterdam",
+        tegoed: 150.0,
+      },
+      {
+        id: 2,
+        naam: "Tom Jansen",
+        email: "tom@email.com",
+        telefoon: "06-87654321",
+        transmissie: "Schakel",
+        status: "Examen",
+        lessen: 28,
+        instructeur: "Lisa de Vries",
+        startdatum: "2023-11-20",
+        adres: "Kerkstraat 45",
+        postcode: "5678 CD",
+        plaats: "Rotterdam",
+        tegoed: 75.5,
+      },
+      {
+        id: 3,
+        naam: "Sophie Willems",
+        email: "sophie@email.com",
+        telefoon: "06-11223344",
+        transmissie: "Automaat",
+        status: "Actief",
+        lessen: 8,
+        instructeur: "Mark Peters",
+        startdatum: "2024-02-10",
+        adres: "Dorpsstraat 67",
+        postcode: "9012 EF",
+        plaats: "Utrecht",
+        tegoed: 200.0,
+      },
+      {
+        id: 4,
+        naam: "David Smit",
+        email: "david@email.com",
+        telefoon: "06-55667788",
+        transmissie: "Schakel",
+        status: "Geslaagd",
+        lessen: 35,
+        instructeur: "Jan Bakker",
+        startdatum: "2023-09-05",
+        adres: "Schoolstraat 89",
+        postcode: "3456 GH",
+        plaats: "Den Haag",
+        tegoed: 0.0,
+      },
+    ]
+    
+    setLeerlingen(mockLeerlingen)
+    setLoading(false)
   }, [])
 
-  const fetchStudents = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      setStudents(
-        data.map((item: any) => ({
-          id: item._id,
-          name: item.naam,
-          email: item.email,
-          phone: item.telefoon,
-          address: item.adres,
-          dateOfBirth: item.geboortedatum ? new Date(item.geboortedatum).toISOString().split("T")[0] : "",
-          licenseType: item.rijbewijsType,
-          startDate: new Date(item.datumAangemaakt).toISOString().split("T")[0],
-          instructor: item.instructeur, // This will be the instructor ID
-          lessonCount: item.lesGeschiedenis.length,
-          theoryPassed: item.examens.some((exam: any) => exam.type === "Theorie" && exam.resultaat === "Geslaagd"),
-          practicalExamDate: item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")
-            ?.datum
-            ? new Date(
-                item.examens.find((exam: any) => exam.type === "Praktijk" && exam.resultaat === "Gepland")?.datum,
-              )
-                .toISOString()
-                .split("T")[0]
-            : undefined,
-          status: item.status,
-          progress: (item.lesGeschiedenis.length / 40) * 100, // Example progress calculation
-          nextLesson: "N.v.t.", // Placeholder, needs actual lesson fetching
-          avatar: "/placeholder-user.jpg", // Placeholder
-          postcode: item.postcode,
-          plaats: item.plaats,
-          transmissie: item.transmissie,
-          financieel: item.financieel,
-        })),
-      )
-    } catch (error) {
-      console.error("Fout bij het ophalen van leerlingen:", error)
-      toast({
-        title: "Fout",
-        description: "Kon leerlingen niet ophalen.",
-        variant: "destructive",
-      })
+  const filteredLeerlingen = leerlingen.filter(
+    (leerling) =>
+      leerling.naam.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      leerling.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      leerling.plaats.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Actief":
+        return "bg-green-100 text-green-800"
+      case "Examen":
+        return "bg-yellow-100 text-yellow-800"
+      case "Geslaagd":
+        return "bg-blue-100 text-blue-800"
+      case "Gestopt":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
     }
   }
 
-  const fetchInstructors = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/instructeurs`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+  const addLeerling = () => {
+    if (newLeerling.naam && newLeerling.email && newLeerling.telefoon) {
+      const leerling: Leerling = {
+        id: leerlingen.length + 1,
+        naam: newLeerling.naam,
+        email: newLeerling.email,
+        telefoon: newLeerling.telefoon,
+        transmissie: newLeerling.transmissie,
+        instructeur: newLeerling.instructeur,
+        adres: newLeerling.adres,
+        postcode: newLeerling.postcode,
+        plaats: newLeerling.plaats,
+        status: "Nieuw",
+        lessen: 0,
+        startdatum: new Date().toISOString().split("T")[0],
+        tegoed: 0.0,
       }
-      const data = await response.json()
-      setInstructors(
-        data.map((item: any) => ({
-          id: item._id,
-          name: item.naam,
-          email: item.email,
-          phone: item.telefoon,
-          specialization: item.rijbewijsType,
-          experience: 0,
-          rating: 0,
-          availability: [],
-          students: 0,
-        })),
-      )
-    } catch (error) {
-      console.error("Fout bij het ophalen van instructeurs:", error)
-      toast({
-        title: "Fout",
-        description: "Kon instructeurs niet ophalen.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleAddStudent = () => {
-    setCurrentStudent(null)
-    setIsDialogOpen(true)
-  }
-
-  const handleEditStudent = (student: Student) => {
-    setCurrentStudent(student)
-    setIsDialogOpen(true)
-  }
-
-  const handleDeleteStudent = async (id: string) => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/${id}`, {
-        method: "DELETE",
-      })
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      setStudents(students.filter((student) => student.id !== id))
-      toast({
-        title: "Leerling verwijderd",
-        description: `Leerling is succesvol verwijderd.`,
+      setLeerlingen([...leerlingen, leerling])
+      setNewLeerling({
+        naam: "",
+        email: "",
+        telefoon: "",
+        transmissie: "",
+        instructeur: "",
+        adres: "",
+        postcode: "",
+        plaats: "",
+        geboortedatum: "",
+        opmerkingen: "",
       })
     } catch (error) {
       console.error("Fout bij het verwijderen van leerling:", error)
       toast({
-        title: "Fout",
-        description: "Kon leerling niet verwijderen.",
-        variant: "destructive",
+        title: "Leerling toegevoegd",
+        description: `${newLeerling.naam} is succesvol toegevoegd.`,
       })
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const formData = new FormData(e.target as HTMLFormElement)
-    const studentData = {
-      naam: formData.get("name") as string,
-      email: formData.get("email") as string,
-      telefoon: formData.get("phone") as string,
-      adres: formData.get("address") as string,
-      postcode: formData.get("postcode") as string,
-      plaats: formData.get("plaats") as string,
-      geboortedatum: formData.get("dateOfBirth")
-        ? new Date(formData.get("dateOfBirth") as string).toISOString()
-        : undefined,
-      rijbewijsType: formData.get("licenseType") as string,
-      transmissie: formData.get("transmission") as string,
-      status: formData.get("status") as string,
-      instructeur: formData.get("instructor") as string,
-    }
-
-    try {
-      let response
-      if (currentStudent) {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/${currentStudent.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(studentData),
-        })
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        toast({
-          title: "Leerling bijgewerkt",
-          description: `Leerling ${studentData.naam} is succesvol bijgewerkt.`,
-        })
-      } else {
-        response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(studentData),
-        })
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        toast({
-          title: "Leerling toegevoegd",
-          description: `Nieuwe leerling ${studentData.naam} is succesvol toegevoegd.`,
-        })
-      }
-      setIsDialogOpen(false)
-      fetchStudents() // Refresh the list
-    } catch (error) {
-      console.error("Fout bij opslaan leerling:", error)
+    } else {
       toast({
-        title: "Fout",
-        description: "Kon leerling niet opslaan.",
+        title: "Validatiefout",
+        description: "Vul alle verplichte velden in",
         variant: "destructive",
       })
     }
   }
 
-  const getInstructorName = (instructorId: string) => {
-    const instructor = instructors.find((inst) => inst.id === instructorId)
-    return instructor ? instructor.name : "N.v.t."
+  const deleteLeerling = (id: number) => {
+    setLeerlingen(leerlingen.filter((l) => l.id !== id))
+    toast({
+      title: "Leerling verwijderd",
+      description: "De leerling is succesvol verwijderd.",
+      variant: "destructive",
+    })
+  }
+
+  // Adres suggesties (mock data - in productie zou dit een echte API zijn)
+  const adresSuggesties = [
+    { adres: "Hoofdstraat 123", postcode: "1234 AB", plaats: "Amsterdam" },
+    { adres: "Kerkstraat 45", postcode: "5678 CD", plaats: "Rotterdam" },
+    { adres: "Dorpsstraat 67", postcode: "9012 EF", plaats: "Utrecht" },
+    { adres: "Schoolstraat 89", postcode: "3456 GH", plaats: "Den Haag" },
+  ]
+
+  const selectAdres = (adres: typeof adresSuggesties[0]) => {
+    setNewLeerling({
+      ...newLeerling,
+      adres: adres.adres,
+      postcode: adres.postcode,
+      plaats: adres.plaats,
+    })
+    setIsAdresDialogOpen(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-96 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -406,4 +438,3 @@ export default function LeerlingenPage() {
     </div>
   )
 }
-//test

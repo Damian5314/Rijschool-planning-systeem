@@ -1,9 +1,8 @@
 "use client"
-import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from "next-themes"
 
-// This file is intentionally left empty as dark mode functionality has been removed.
-// It remains here to prevent import errors if other components still reference it.
-// You can safely delete this file if no other components depend on it.
+import * as React from "react"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { type ThemeProviderProps } from "next-themes/dist/types"
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>

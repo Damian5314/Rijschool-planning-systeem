@@ -1,22 +1,22 @@
+// Simple toast hook implementation
 "use client"
 
 import * as React from "react"
 
-import type { ToastActionElement, ToastProps } from "@/components/ui/toast"
-
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
 
-type ToasterToast = ToastProps & {
+type ToasterToast = {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
-  action?: ToastActionElement
+  action?: React.ReactNode
+  variant?: "default" | "destructive"
 }
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST", 
   DISMISS_TOAST: "DISMISS_TOAST",
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
@@ -24,7 +24,7 @@ const actionTypes = {
 let count = 0
 
 function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER
+  count = (count + 1) % Number.MAX_VALUE
   return count.toString()
 }
 
@@ -81,29 +81,31 @@ export const reducer = (state: State, action: Action): State => {
     case "UPDATE_TOAST":
       return {
         ...state,
-        toasts: state.toasts.map((t) => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
+        ),
       }
 
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
+      // If toastId is undefined, dismiss all toasts
+      if (toastId === undefined) {
+        return {
+          ...state,
+          toasts: state.toasts.map((t) => ({
+            ...t,
+          })),
+        }
       }
-
       return {
         ...state,
         toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
+          t.id === toastId
             ? {
                 ...t,
-                open: false,
               }
-            : t,
+            : t
         ),
       }
     }
@@ -149,10 +151,6 @@ function toast({ ...props }: Toast) {
     toast: {
       ...props,
       id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss()
-      },
     },
   })
 
