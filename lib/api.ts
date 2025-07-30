@@ -24,7 +24,7 @@ export interface User {
   id: number
   naam: string
   email: string
-  rol: 'admin' | 'instructeur' | 'gebruiker'
+  rol: 'eigenaar' | 'instructeur' | 'gebruiker'
   actief: boolean
   created_at: string
   updated_at: string
@@ -138,6 +138,8 @@ export interface Exam {
 class ApiClient {
   private baseURL: string
   private token: string | null = null
+  private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map()
+  private readonly CACHE_TTL = 5 * 60 * 1000 // 5 minutes default TTL
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL
@@ -145,6 +147,48 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token')
     }
+  }
+
+  private getCacheKey(url: string, options?: RequestInit): string {
+    return `${options?.method || 'GET'}:${url}:${JSON.stringify(options?.body || '')}`
+  }
+
+  private isValidCache(cacheEntry: { data: any; timestamp: number; ttl: number }): boolean {
+    return Date.now() - cacheEntry.timestamp < cacheEntry.ttl
+  }
+
+  private setCache(key: string, data: any, ttl: number = this.CACHE_TTL): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
+    })
+  }
+
+  private getCache(key: string): any | null {
+    const cacheEntry = this.cache.get(key)
+    if (cacheEntry && this.isValidCache(cacheEntry)) {
+      return cacheEntry.data
+    }
+    if (cacheEntry) {
+      this.cache.delete(key) // Remove expired cache
+    }
+    return null
+  }
+
+  public clearCache(): void {
+    this.cache.clear()
+  }
+
+  private clearRelatedCache(endpoint: string): void {
+    // Clear cache entries related to this endpoint
+    const keysToDelete: string[] = []
+    for (const [key] of this.cache) {
+      if (key.includes(endpoint.split('/')[2] || endpoint)) { // Match resource type
+        keysToDelete.push(key)
+      }
+    }
+    keysToDelete.forEach(key => this.cache.delete(key))
   }
 
   setToken(token: string) {
@@ -163,9 +207,20 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    enableCache: boolean = true,
+    cacheTTL?: number
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`
+    const cacheKey = this.getCacheKey(url, options)
+    
+    // Check cache for GET requests
+    if (enableCache && (!options.method || options.method === 'GET')) {
+      const cached = this.getCache(cacheKey)
+      if (cached) {
+        return cached
+      }
+    }
     
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
@@ -189,6 +244,16 @@ class ApiClient {
 
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`)
+      }
+
+      // Cache successful GET responses
+      if (enableCache && (!options.method || options.method === 'GET')) {
+        this.setCache(cacheKey, data, cacheTTL)
+      }
+
+      // Clear cache for non-GET requests that might affect cached data
+      if (options.method && options.method !== 'GET') {
+        this.clearRelatedCache(endpoint)
       }
 
       return data
