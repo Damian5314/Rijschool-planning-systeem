@@ -166,11 +166,11 @@ const securityLogging = (req, res, next) => {
   const logSuspiciousActivity = () => {
     const suspiciousIndicators = [
       req.url.includes('..'),
-      req.url.includes('admin') && !req.url.includes('/api/'),
+      req.url.includes('eigenaar') && !req.url.includes('/api/'),
       req.headers['user-agent']?.includes('sqlmap'),
       req.headers['user-agent']?.includes('nikto'),
-      Object.keys(req.query).length > 20,
-      JSON.stringify(req.body).length > 100000
+      Object.keys(req.query || {}).length > 20,
+      JSON.stringify(req.body || {}).length > 100000
     ]
     
     if (suspiciousIndicators.some(indicator => indicator)) {
@@ -252,7 +252,11 @@ const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = process.env.ALLOWED_ORIGINS ? 
       process.env.ALLOWED_ORIGINS.split(',') : 
-      ['http://localhost:3000', 'http://localhost:3001']
+      [
+        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3000'
+      ]
     
     // Allow requests with no origin (mobile apps, etc.)
     if (!origin) return callback(null, true)
@@ -261,12 +265,14 @@ const corsOptions = {
       callback(null, true)
     } else {
       console.warn('🚫 CORS blocked origin:', origin)
+      console.warn('🔧 Allowed origins:', allowedOrigins)
       callback(new Error('Not allowed by CORS'))
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token', 'X-Requested-With'],
+  exposedHeaders: ['X-Request-ID'],
   maxAge: 86400 // 24 hours
 }
 
