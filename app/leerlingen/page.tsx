@@ -1,32 +1,27 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle, Edit, Trash2, Eye } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, Eye, Euro } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, Eye, Euro, Users, Award } from "lucide-react"
+import { toast } from "sonner"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
+import { Student } from "@/lib/api"
+import { useDebounce } from "@/hooks/useDebounce"
 
-interface Leerling {
-  id: number
-  naam: string
-  email: string
-  telefoon: string
-  transmissie: string
-  status: string
-  lessen: number
-  instructeur: string
-  startdatum: string
-  adres: string
-  postcode: string
-  plaats: string
-  tegoed: number
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
+// Extend Student interface with additional display properties
+interface Leerling extends Student {
+  lessen?: number
+  instructeur?: string
+  startdatum?: string
 }
 
 interface NewLeerling {
@@ -43,11 +38,11 @@ interface NewLeerling {
 }
 
 export default function LeerlingenPage() {
-  const [students, setStudents] = useState<Student[]>([])
-  const [instructors, setInstructors] = useState<Instructor[]>([])
+  const { isAuthenticated, loading: authLoading } = useAuth()
+  const [leerlingen, setLeerlingen] = useState<Leerling[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isAdresDialogOpen, setIsAdresDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const [newLeerling, setNewLeerling] = useState<NewLeerling>({
     naam: "",
@@ -62,83 +57,58 @@ export default function LeerlingenPage() {
     opmerkingen: "",
   })
 
-  const [leerlingen, setLeerlingen] = useState<Leerling[]>([])
-
-  // Mock data laden
   useEffect(() => {
-    const mockLeerlingen: Leerling[] = [
-      {
-        id: 1,
-        naam: "Emma van der Berg",
-        email: "emma@email.com",
-        telefoon: "06-12345678",
-        transmissie: "Automaat",
-        status: "Actief",
-        lessen: 15,
-        instructeur: "Jan Bakker",
-        startdatum: "2024-01-15",
-        adres: "Hoofdstraat 123",
-        postcode: "1234 AB",
-        plaats: "Amsterdam",
-        tegoed: 150.0,
-      },
-      {
-        id: 2,
-        naam: "Tom Jansen",
-        email: "tom@email.com",
-        telefoon: "06-87654321",
-        transmissie: "Schakel",
-        status: "Examen",
-        lessen: 28,
-        instructeur: "Lisa de Vries",
-        startdatum: "2023-11-20",
-        adres: "Kerkstraat 45",
-        postcode: "5678 CD",
-        plaats: "Rotterdam",
-        tegoed: 75.5,
-      },
-      {
-        id: 3,
-        naam: "Sophie Willems",
-        email: "sophie@email.com",
-        telefoon: "06-11223344",
-        transmissie: "Automaat",
-        status: "Actief",
-        lessen: 8,
-        instructeur: "Mark Peters",
-        startdatum: "2024-02-10",
-        adres: "Dorpsstraat 67",
-        postcode: "9012 EF",
-        plaats: "Utrecht",
-        tegoed: 200.0,
-      },
-      {
-        id: 4,
-        naam: "David Smit",
-        email: "david@email.com",
-        telefoon: "06-55667788",
-        transmissie: "Schakel",
-        status: "Geslaagd",
-        lessen: 35,
-        instructeur: "Jan Bakker",
-        startdatum: "2023-09-05",
-        adres: "Schoolstraat 89",
-        postcode: "3456 GH",
-        plaats: "Den Haag",
-        tegoed: 0.0,
-      },
-    ]
-    
-    setLeerlingen(mockLeerlingen)
-    setLoading(false)
-  }, [])
+    if (isAuthenticated && !authLoading) {
+      loadLeerlingen()
+    }
+  }, [isAuthenticated, authLoading])
 
-  const filteredLeerlingen = leerlingen.filter(
-    (leerling) =>
-      leerling.naam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leerling.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leerling.plaats.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('auth_token')
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    }
+  }
+
+  const loadLeerlingen = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/students`, {
+        headers: getAuthHeaders(),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setLeerlingen(data.data || [])
+      } else {
+        toast.error("Fout bij laden", {
+          description: "Kon leerlingen niet laden",
+        })
+      }
+    } catch (error) {
+      console.error('Error loading students:', error)
+      toast.error("Verbindingsfout", {
+        description: "Kon geen verbinding maken met de server",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Debounced search for better performance
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  
+  // Memoized filtered results for better performance
+  const filteredLeerlingen = useMemo(() => {
+    if (!debouncedSearchTerm.trim()) return leerlingen
+    
+    const term = debouncedSearchTerm.toLowerCase()
+    return leerlingen.filter((leerling) =>
+      leerling.naam.toLowerCase().includes(term) ||
+      leerling.email.toLowerCase().includes(term) ||
+      (leerling.plaats && leerling.plaats.toLowerCase().includes(term))
+    )
+  }, [leerlingen, debouncedSearchTerm])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -155,58 +125,123 @@ export default function LeerlingenPage() {
     }
   }
 
-  const addLeerling = () => {
-    if (newLeerling.naam && newLeerling.email && newLeerling.telefoon) {
-      const leerling: Leerling = {
-        id: leerlingen.length + 1,
-        naam: newLeerling.naam,
-        email: newLeerling.email,
-        telefoon: newLeerling.telefoon,
-        transmissie: newLeerling.transmissie,
-        instructeur: newLeerling.instructeur,
-        adres: newLeerling.adres,
-        postcode: newLeerling.postcode,
-        plaats: newLeerling.plaats,
-        status: "Nieuw",
-        lessen: 0,
-        startdatum: new Date().toISOString().split("T")[0],
-        tegoed: 0.0,
+  const addLeerling = async () => {
+    if (!newLeerling.naam || !newLeerling.email || !newLeerling.telefoon) {
+      toast.error("Validatiefout", {
+        description: "Naam, email en telefoon zijn verplicht",
+      })
+      return
+    }
+
+    // Optimistic update - add immediately to UI
+    const tempStudent: Leerling = {
+      id: Date.now(), // Temporary ID
+      naam: newLeerling.naam,
+      email: newLeerling.email,
+      telefoon: newLeerling.telefoon,
+      adres: newLeerling.adres,
+      postcode: newLeerling.postcode,
+      plaats: newLeerling.plaats,
+      geboortedatum: newLeerling.geboortedatum,
+      rijbewijs_type: 'B',
+      transmissie: newLeerling.transmissie as 'Handgeschakeld' | 'Automaat',
+      status: 'Actief',
+      instructeur_id: undefined,
+      instructeur_naam: newLeerling.instructeur,
+      tegoed: 0,
+      openstaand_bedrag: 0,
+      lessen: 0,
+      instructeur: newLeerling.instructeur,
+      startdatum: new Date().toISOString().split('T')[0],
+    }
+
+    setLeerlingen(prev => [...prev, tempStudent])
+    setIsDialogOpen(false)
+    
+    // Reset form
+    const resetForm = {
+      naam: "",
+      email: "",
+      telefoon: "",
+      transmissie: "",
+      instructeur: "",
+      adres: "",
+      postcode: "",
+      plaats: "",
+      geboortedatum: "",
+      opmerkingen: "",
+    }
+    setNewLeerling(resetForm)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/students`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newLeerling),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Replace temp student with real one from server
+        setLeerlingen(prev => prev.map(l => l.id === tempStudent.id ? data.data : l))
+        toast.success("Leerling toegevoegd", {
+          description: `${newLeerling.naam} is succesvol toegevoegd.`,
+        })
+      } else {
+        // Rollback optimistic update
+        setLeerlingen(prev => prev.filter(l => l.id !== tempStudent.id))
+        toast.error("Fout bij toevoegen", {
+          description: data.message || "Er ging iets mis",
+        })
       }
-      setLeerlingen([...leerlingen, leerling])
-      setNewLeerling({
-        naam: "",
-        email: "",
-        telefoon: "",
-        transmissie: "",
-        instructeur: "",
-        adres: "",
-        postcode: "",
-        plaats: "",
-        geboortedatum: "",
-        opmerkingen: "",
-      })
     } catch (error) {
-      console.error("Fout bij het verwijderen van leerling:", error)
-      toast({
-        title: "Leerling toegevoegd",
-        description: `${newLeerling.naam} is succesvol toegevoegd.`,
-      })
-    } else {
-      toast({
-        title: "Validatiefout",
-        description: "Vul alle verplichte velden in",
-        variant: "destructive",
+      // Rollback optimistic update
+      setLeerlingen(prev => prev.filter(l => l.id !== tempStudent.id))
+      console.error('Error adding student:', error)
+      toast.error("Verbindingsfout", {
+        description: "Kon leerling niet toevoegen",
       })
     }
   }
 
-  const deleteLeerling = (id: number) => {
-    setLeerlingen(leerlingen.filter((l) => l.id !== id))
-    toast({
-      title: "Leerling verwijderd",
+  const deleteLeerling = async (id: number) => {
+    // Store original student for potential rollback
+    const originalStudent = leerlingen.find(l => l.id === id)
+    
+    // Optimistic update - remove immediately from UI
+    setLeerlingen(prev => prev.filter(l => l.id !== id))
+    toast.success("Leerling verwijderd", {
       description: "De leerling is succesvol verwijderd.",
-      variant: "destructive",
     })
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/students/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        // Rollback optimistic update
+        if (originalStudent) {
+          setLeerlingen(prev => [...prev, originalStudent].sort((a, b) => a.id - b.id))
+        }
+        toast.error("Fout bij verwijderen", {
+          description: data.message || "Er ging iets mis",
+        })
+      }
+    } catch (error) {
+      // Rollback optimistic update
+      if (originalStudent) {
+        setLeerlingen(prev => [...prev, originalStudent].sort((a, b) => a.id - b.id))
+      }
+      console.error('Error deleting student:', error)
+      toast.error("Verbindingsfout", {
+        description: "Kon leerling niet verwijderen",
+      })
+    }
   }
 
   // Adres suggesties (mock data - in productie zou dit een echte API zijn)
@@ -224,10 +259,10 @@ export default function LeerlingenPage() {
       postcode: adres.postcode,
       plaats: adres.plaats,
     })
-    setIsAdresDialogOpen(false)
+    // setIsAdresDialogOpen(false) // Feature not implemented yet
   }
 
-  if (loading) {
+  if (loading || authLoading || !isAuthenticated) {
     return (
       <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen">
         <div className="animate-pulse">
@@ -239,154 +274,175 @@ export default function LeerlingenPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">Leerlingen</h1>
-        <Button className="ml-auto" onClick={handleAddStudent}>
-          <PlusCircle className="mr-2 h-4 w-4" />
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          Leerlingen
+        </h2>
+        <Button onClick={() => setIsDialogOpen(true)} className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
+          <Plus className="mr-2 h-4 w-4" />
           Nieuwe Leerling
         </Button>
       </div>
+
+      {/* Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Totaal Leerlingen</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{leerlingen.length}</div>
+            <p className="text-xs text-muted-foreground">Alle leerlingen</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Actieve Leerlingen</CardTitle>
+            <Users className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {leerlingen.filter(l => l.status === "Actief").length}
+            </div>
+            <p className="text-xs text-muted-foreground">In opleiding</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Gemiddeld Tegoed</CardTitle>
+            <Euro className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">
+              €{leerlingen.length > 0 ? (leerlingen.reduce((acc, l) => acc + Number(l.tegoed || 0), 0) / leerlingen.length).toFixed(0) : '0'}
+            </div>
+            <p className="text-xs text-muted-foreground">Per leerling</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Examenklaar</CardTitle>
+            <Award className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {leerlingen.filter(l => l.status === "Examen").length}
+            </div>
+            <p className="text-xs text-muted-foreground">Klaar voor examen</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Overzicht Leerlingen</CardTitle>
+          <div className="flex items-center space-x-2 mt-4">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Zoek leerlingen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Naam</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Telefoon</TableHead>
-                <TableHead>Instructeur</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Acties</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell>{student.name}</TableCell>
-                  <TableCell>{student.email}</TableCell>
-                  <TableCell>{student.phone}</TableCell>
-                  <TableCell>{getInstructorName(student.instructor)}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        student.status === "Actief"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                          : student.status === "Gepauzeerd"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                      }`}
-                    >
-                      {student.status}
+          <div className="space-y-4">
+            {filteredLeerlingen.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">Geen leerlingen gevonden</div>
+            ) : (
+              filteredLeerlingen.map((leerling) => (
+                <div key={leerling.id} className="flex items-center justify-between p-4 bg-white rounded-lg border shadow-sm">
+                  <div className="flex items-center space-x-4">
+                    <div>
+                      <h3 className="font-medium">{leerling.naam}</h3>
+                      <p className="text-sm text-gray-500">{leerling.email}</p>
+                      <p className="text-xs text-gray-400">{leerling.plaats || ''} {leerling.plaats && leerling.instructeur ? '•' : ''} {leerling.instructeur || ''}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="text-right">
+                      <p className="font-medium">€{Number(leerling.tegoed || 0).toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">{leerling.lessen || 0} lessen</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(leerling.status)}`}>
+                      {leerling.status}
                     </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Link href={`/leerlingen/${student.id}`}>
-                      <Button variant="ghost" size="icon" className="mr-2">
+                    <Link href={`/leerlingen/${leerling.id}`}>
+                      <Button variant="ghost" size="icon">
                         <Eye className="h-4 w-4" />
-                        <span className="sr-only">Bekijken</span>
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="icon" onClick={() => handleEditStudent(student)} className="mr-2">
+                    <Button variant="ghost" size="icon">
                       <Edit className="h-4 w-4" />
-                      <span className="sr-only">Bewerken</span>
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteStudent(student.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => deleteLeerling(leerling.id)}>
                       <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Verwijderen</span>
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{currentStudent ? "Leerling Bewerken" : "Nieuwe Leerling Toevoegen"}</DialogTitle>
+            <DialogTitle>Nieuwe Leerling Toevoegen</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+              <Label htmlFor="naam" className="text-right">
                 Naam
               </Label>
-              <Input id="name" name="name" defaultValue={currentStudent?.name} className="col-span-3" required />
+              <Input 
+                id="naam" 
+                className="col-span-3"
+                value={newLeerling.naam}
+                onChange={(e) => setNewLeerling({ ...newLeerling, naam: e.target.value })}
+                required 
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
                 E-mail
               </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                defaultValue={currentStudent?.email}
+              <Input 
+                id="email" 
+                type="email" 
                 className="col-span-3"
-                required
+                value={newLeerling.email}
+                onChange={(e) => setNewLeerling({ ...newLeerling, email: e.target.value })}
+                required 
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
+              <Label htmlFor="telefoon" className="text-right">
                 Telefoon
               </Label>
-              <Input id="phone" name="phone" defaultValue={currentStudent?.phone} className="col-span-3" required />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="address" className="text-right">
-                Adres
-              </Label>
-              <Input id="address" name="address" defaultValue={currentStudent?.address} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="postcode" className="text-right">
-                Postcode
-              </Label>
-              <Input id="postcode" name="postcode" defaultValue={currentStudent?.postcode} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="plaats" className="text-right">
-                Plaats
-              </Label>
-              <Input id="plaats" name="plaats" defaultValue={currentStudent?.plaats} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dateOfBirth" className="text-right">
-                Geboortedatum
-              </Label>
-              <Input
-                id="dateOfBirth"
-                name="dateOfBirth"
-                type="date"
-                defaultValue={currentStudent?.dateOfBirth}
+              <Input 
+                id="telefoon" 
                 className="col-span-3"
+                value={newLeerling.telefoon}
+                onChange={(e) => setNewLeerling({ ...newLeerling, telefoon: e.target.value })}
+                required 
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="licenseType" className="text-right">
-                Rijbewijs Type
-              </Label>
-              <Select name="licenseType" defaultValue={currentStudent?.licenseType} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="B">B (Personenauto)</SelectItem>
-                  <SelectItem value="A">A (Motor)</SelectItem>
-                  <SelectItem value="AM">AM (Bromfiets)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="transmission" className="text-right">
+              <Label htmlFor="transmissie" className="text-right">
                 Transmissie
               </Label>
-              <Select name="transmission" defaultValue={currentStudent?.transmissie} required>
+              <Select 
+                value={newLeerling.transmissie}
+                onValueChange={(value) => setNewLeerling({ ...newLeerling, transmissie: value })}
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecteer transmissie" />
                 </SelectTrigger>
@@ -397,42 +453,27 @@ export default function LeerlingenPage() {
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="instructor" className="text-right">
+              <Label htmlFor="instructeur" className="text-right">
                 Instructeur
               </Label>
-              <Select name="instructor" defaultValue={currentStudent?.instructor}>
+              <Select 
+                value={newLeerling.instructeur}
+                onValueChange={(value) => setNewLeerling({ ...newLeerling, instructeur: value })}
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Selecteer instructeur" />
                 </SelectTrigger>
                 <SelectContent>
-                  {instructors.map((instr) => (
-                    <SelectItem key={instr.id} value={instr.id}>
-                      {instr.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="Jan Bakker">Jan Bakker</SelectItem>
+                  <SelectItem value="Lisa de Vries">Lisa de Vries</SelectItem>
+                  <SelectItem value="Mark Peters">Mark Peters</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Status
-              </Label>
-              <Select name="status" defaultValue={currentStudent?.status} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Actief">Actief</SelectItem>
-                  <SelectItem value="Inactief">Inactief</SelectItem>
-                  <SelectItem value="Gepauzeerd">Gepauzeerd</SelectItem>
-                  <SelectItem value="Afgestudeerd">Afgestudeerd</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button type="submit">{currentStudent ? "Opslaan" : "Toevoegen"}</Button>
-            </DialogFooter>
-          </form>
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={addLeerling}>Leerling Toevoegen</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
