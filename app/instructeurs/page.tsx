@@ -3,9 +3,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle, Edit, Trash2 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -20,9 +17,10 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Search, Edit, Trash2, Phone, Mail, Calendar, Users, Award } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
+import { useAuth } from "@/contexts/auth-context"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
 interface Instructeur {
   id: number
@@ -37,7 +35,7 @@ interface Instructeur {
 }
 
 export default function Instructeurs() {
-  const { toast } = useToast()
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [instructeurs, setInstructeurs] = useState<Instructeur[]>([])
@@ -52,11 +50,13 @@ export default function Instructeurs() {
   })
 
   useEffect(() => {
-    loadInstructeurs()
-  }, [])
+    if (isAuthenticated && !authLoading) {
+      loadInstructeurs()
+    }
+  }, [isAuthenticated, authLoading])
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
@@ -65,7 +65,7 @@ export default function Instructeurs() {
 
   const loadInstructeurs = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/instructeurs`, {
+      const response = await fetch(`${API_BASE_URL}/api/instructeurs`, {
         headers: getAuthHeaders(),
       })
       
@@ -73,18 +73,14 @@ export default function Instructeurs() {
         const data = await response.json()
         setInstructeurs(data.data || [])
       } else {
-        toast({
-          title: "Fout bij laden",
+        toast.error("Fout bij laden", {
           description: "Kon instructeurs niet laden",
-          variant: "destructive",
         })
       }
     } catch (error) {
       console.error('Error loading instructeurs:', error)
-      toast({
-        title: "Verbindingsfout",
+      toast.error("Verbindingsfout", {
         description: "Kon geen verbinding maken met de server",
-        variant: "destructive",
       })
     } finally {
       setLoading(false)
@@ -116,16 +112,14 @@ export default function Instructeurs() {
 
   const addInstructeur = async () => {
     if (!newInstructeur.naam || !newInstructeur.email) {
-      toast({
-        title: "Vereiste velden",
+      toast.error("Vereiste velden", {
         description: "Naam en email zijn verplicht",
-        variant: "destructive",
       })
       return
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/instructeurs`, {
+      const response = await fetch(`${API_BASE_URL}/api/instructeurs`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(newInstructeur),
@@ -143,30 +137,25 @@ export default function Instructeurs() {
           status: "Actief",
         })
         setIsDialogOpen(false)
-        toast({
-          title: "Instructeur toegevoegd",
+        toast.success("Instructeur toegevoegd", {
           description: `${newInstructeur.naam} is succesvol toegevoegd.`,
         })
       } else {
-        toast({
-          title: "Fout bij toevoegen",
+        toast.error("Fout bij toevoegen", {
           description: data.message || "Er ging iets mis",
-          variant: "destructive",
         })
       }
     } catch (error) {
       console.error('Error adding instructeur:', error)
-      toast({
-        title: "Verbindingsfout",
+      toast.error("Verbindingsfout", {
         description: "Kon instructeur niet toevoegen",
-        variant: "destructive",
       })
     }
   }
 
   const deleteInstructeur = async (id: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/instructeurs/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/instructeurs/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       })
@@ -175,28 +164,23 @@ export default function Instructeurs() {
 
       if (data.success) {
         setInstructeurs(instructeurs.filter((i) => i.id !== id))
-        toast({
-          title: "Instructeur verwijderd",
+        toast.success("Instructeur verwijderd", {
           description: "De instructeur is succesvol verwijderd.",
         })
       } else {
-        toast({
-          title: "Fout bij verwijderen",
+        toast.error("Fout bij verwijderen", {
           description: data.message || "Er ging iets mis",
-          variant: "destructive",
         })
       }
     } catch (error) {
       console.error('Error deleting instructeur:', error)
-      toast({
-        title: "Verbindingsfout",
+      toast.error("Verbindingsfout", {
         description: "Kon instructeur niet verwijderen",
-        variant: "destructive",
       })
     }
   }
 
-  if (loading) {
+  if (loading || authLoading || !isAuthenticated) {
     return (
       <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
         <div className="animate-pulse">
@@ -339,6 +323,15 @@ export default function Instructeurs() {
       <Card>
         <CardHeader>
           <CardTitle>Overzicht Instructeurs</CardTitle>
+          <div className="flex items-center space-x-2 mt-4">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Zoek instructeurs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -406,65 +399,6 @@ export default function Instructeurs() {
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{currentInstructor ? "Instructeur Bewerken" : "Nieuwe Instructeur Toevoegen"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Naam
-              </Label>
-              <Input id="name" name="name" defaultValue={currentInstructor?.name} className="col-span-3" required />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                E-mail
-              </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                defaultValue={currentInstructor?.email}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Telefoon
-              </Label>
-              <Input id="phone" name="phone" defaultValue={currentInstructor?.phone} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="specialization" className="text-right">
-                Rijbewijs Type
-              </Label>
-              <Select
-                name="specialization"
-                defaultValue={currentInstructor?.specialization[0]} // Assuming single select for simplicity in form
-                required
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="B">B (Personenauto)</SelectItem>
-                  <SelectItem value="A">A (Motor)</SelectItem>
-                  <SelectItem value="C">C (Vrachtwagen)</SelectItem>
-                  <SelectItem value="D">D (Bus)</SelectItem>
-                  <SelectItem value="E">E (Aanhangwagen)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button type="submit">{currentInstructor ? "Opslaan" : "Toevoegen"}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
