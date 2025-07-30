@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EyeIcon, EyeOffIcon, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import Link from "next/link"
 
 export default function RegisterPage() {
@@ -34,29 +35,16 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!acceptTerms || !acceptPrivacy) {
-      toast({
-        title: "Voorwaarden accepteren",
-        description: "Je moet de algemene voorwaarden en privacyverklaring accepteren",
-        variant: "destructive",
+    if (password !== confirmPassword) {
+      toast.error("Wachtwoorden komen niet overeen", {
+        description: "Controleer je wachtwoord en probeer opnieuw"
       })
       return
     }
 
-    if (registerData.password !== registerData.confirmPassword) {
-      toast({
-        title: "Wachtwoorden komen niet overeen",
-        description: "Controleer je wachtwoord en probeer opnieuw",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (registerData.password.length < 6) {
-      toast({
-        title: "Wachtwoord te kort",
-        description: "Het wachtwoord moet minimaal 6 karakters bevatten",
-        variant: "destructive",
+    if (password.length < 6) {
+      toast.error("Wachtwoord te kort", {
+        description: "Het wachtwoord moet minimaal 6 karakters bevatten"
       })
       return
     }
@@ -76,7 +64,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50">
       <Card className="mx-auto max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">Account Aanmaken</CardTitle>
@@ -121,7 +109,7 @@ export default function RegisterPage() {
                 <SelectContent>
                   <SelectItem value="gebruiker">Gebruiker</SelectItem>
                   <SelectItem value="instructeur">Instructeur</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="eigenaar">Eigenaar</SelectItem>
                 </SelectContent>
               </Select>
             </div>
