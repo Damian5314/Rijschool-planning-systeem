@@ -1,6 +1,6 @@
 
 > rijschool-backend@1.0.0 start
-> node server.js
+> node server.js 2
 
 🚀 ===================================
 🏫 Rijschool API Server Started
@@ -8,9 +8,10 @@
 📍 Server URL: http://localhost:5000
 📋 API Docs: http://localhost:5000/api
 🏥 Health: http://localhost:5000/health
-🔐 Test Login: admin@rijschool.nl / admin123
+🔐 Test Login: eigenaar@rijschool.nl / eigenaar123
 💾 Database: PostgreSQL (Neon)
 🛡️ Security: Enhanced (Rate limiting, Validation, Sanitization)
 🌍 Environment: development
 🚀 ===================================
-❌ Database verbinding fout: Connection terminated due to connection timeout
+✅ Verbonden met Neon PostgreSQL database
+Database tijd: 2025-07-30T15:46:44.824Z
