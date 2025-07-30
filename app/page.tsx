@@ -37,11 +37,13 @@ export default function DashboardPage() {
   const [todayLessons, setTodayLessons] = useState<any[]>([])
   const [maintenanceAlerts, setMaintenanceAlerts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const { user, isAdmin, isInstructeur } = useAuth()
+  const { user, isInstructeur, isAuthenticated, loading: authLoading } = useAuth()
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    if (isAuthenticated && !authLoading) {
+      fetchDashboardData()
+    }
+  }, [isAuthenticated, authLoading])
 
   const fetchDashboardData = async () => {
     try {
@@ -112,7 +114,7 @@ export default function DashboardPage() {
     return time.slice(0, 5) // HH:MM format
   }
 
-  if (loading) {
+  if (loading || authLoading || !isAuthenticated) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
         <div className="flex justify-between items-center">
@@ -294,7 +296,7 @@ export default function DashboardPage() {
                 Nieuwe Les
               </Link>
             </Button>
-            {isAdmin && (
+            {user?.rol === 'eigenaar' && (
               <>
                 <Button asChild variant="outline" className="justify-start">
                   <Link href="/instructeurs?action=new">
