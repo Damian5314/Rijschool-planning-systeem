@@ -137,37 +137,37 @@ app.get("/api", (req, res) => {
       students: {
         "GET /api/students": "Alle studenten ophalen (met filters & paginatie)",
         "GET /api/students/:id": "Student ophalen op ID",
-        "POST /api/students": "Nieuwe student aanmaken (admin only)",
-        "PUT /api/students/:id": "Student bijwerken (admin/instructeur)",
-        "DELETE /api/students/:id": "Student verwijderen (admin only)",
-        "POST /api/students/:id/transactie": "Financiële transactie toevoegen (admin only)"
+        "POST /api/students": "Nieuwe student aanmaken (eigenaar only)",
+        "PUT /api/students/:id": "Student bijwerken (eigenaar/instructeur)",
+        "DELETE /api/students/:id": "Student verwijderen (eigenaar only)",
+        "POST /api/students/:id/transactie": "Financiële transactie toevoegen (eigenaar only)"
       },
       instructeurs: {
         "GET /api/instructeurs": "Alle instructeurs ophalen",
         "GET /api/instructeurs/:id": "Instructeur ophalen op ID",
         "GET /api/instructeurs/:id/planning": "Planning van instructeur",
-        "POST /api/instructeurs": "Nieuwe instructeur aanmaken (admin only)",
-        "PUT /api/instructeurs/:id": "Instructeur bijwerken (admin only)",
-        "DELETE /api/instructeurs/:id": "Instructeur verwijderen (admin only)"
+        "POST /api/instructeurs": "Nieuwe instructeur aanmaken (eigenaar only)",
+        "PUT /api/instructeurs/:id": "Instructeur bijwerken (eigenaar only)",
+        "DELETE /api/instructeurs/:id": "Instructeur verwijderen (eigenaar only)"
       },
       lessons: {
         "GET /api/lessons": "Alle lessen ophalen (met filters & paginatie)",
         "GET /api/lessons/:id": "Les ophalen op ID",
-        "POST /api/lessons": "Nieuwe les aanmaken (admin/instructeur)",
-        "PUT /api/lessons/:id": "Les bijwerken (admin/instructeur)",
-        "DELETE /api/lessons/:id": "Les verwijderen (admin only)"
+        "POST /api/lessons": "Nieuwe les aanmaken (eigenaar/instructeur)",
+        "PUT /api/lessons/:id": "Les bijwerken (eigenaar/instructeur)",
+        "DELETE /api/lessons/:id": "Les verwijderen (eigenaar only)"
       },
       vehicles: {
         "GET /api/vehicles": "Alle voertuigen ophalen (met filters)",
         "GET /api/vehicles/:id": "Voertuig ophalen op ID",
         "GET /api/vehicles/maintenance-alerts": "Onderhoudsmeldingen",
-        "POST /api/vehicles": "Nieuw voertuig aanmaken (admin only)",
-        "PUT /api/vehicles/:id": "Voertuig bijwerken (admin only)",
-        "DELETE /api/vehicles/:id": "Voertuig verwijderen (admin only)"
+        "POST /api/vehicles": "Nieuw voertuig aanmaken (eigenaar only)",
+        "PUT /api/vehicles/:id": "Voertuig bijwerken (eigenaar only)",
+        "DELETE /api/vehicles/:id": "Voertuig verwijderen (eigenaar only)"
       }
     },
     authorization_roles: {
-      admin: "Volledige toegang tot alle resources",
+      eigenaar: "Volledige toegang tot alle resources",
       instructeur: "Kan lessen beheren en studenten bekijken/bewerken",
       gebruiker: "Alleen lezen van eigen gegevens"
     },
@@ -175,8 +175,8 @@ app.get("/api", (req, res) => {
       login: {
         url: "POST /api/auth/signin",
         body: {
-          email: "admin@rijschool.nl",
-          wachtwoord: "admin123"
+          email: "eigenaar@rijschool.nl",
+          wachtwoord: "eigenaar123"
         }
       },
       get_students: {
@@ -340,7 +340,7 @@ const server = app.listen(PORT, () => {
   console.log(`📍 Server URL: http://localhost:${PORT}`)
   console.log(`📋 API Docs: http://localhost:${PORT}/api`)
   console.log(`🏥 Health: http://localhost:${PORT}/health`)
-  console.log(`🔐 Test Login: admin@rijschool.nl / admin123`)
+  console.log(`🔐 Test Login: eigenaar@rijschool.nl / eigenaar123`)
   console.log(`💾 Database: PostgreSQL (Neon)`)
   console.log(`🛡️ Security: Enhanced (Rate limiting, Validation, Sanitization)`)
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`)
