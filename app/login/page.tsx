@@ -1,125 +1,74 @@
 "use client"
 
 import React, { useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { Car, Eye, EyeOff, Lock, Mail, Shield, Users, Award } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Car, Eye, EyeOff, Lock, Mail, Shield, Users, Award, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [loginData, setLoginData] = useState({
     email: "",
     wachtwoord: "",
   })
+  
+  const router = useRouter()
+  const { login } = useAuth()
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(loginData),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        // Store authentication data
-        localStorage.setItem('token', data.data.token)
-        localStorage.setItem('user', JSON.stringify(data.data.user))
-        localStorage.setItem('isLoggedIn', 'true')
-        
+      const success = await login(loginData.email, loginData.wachtwoord)
+      
+      if (success) {
         if (rememberMe) {
           localStorage.setItem('rememberMe', 'true')
         }
-
-        toast({
-          title: "Succesvol ingelogd!",
-          description: `Welkom terug, ${data.data.user.naam}`,
-        })
-
-        // Redirect to dashboard
         router.push("/")
-      } else {
-        toast({
-          title: "Login mislukt",
-          description: data.message || "Controleer je email en wachtwoord",
-          variant: "destructive",
-        })
       }
     } catch (error) {
       console.error('Login error:', error)
-      toast({
-        title: "Verbindingsfout",
-        description: "Er ging iets mis bij het inloggen. Probeer het opnieuw.",
-        variant: "destructive",
-      })
+      toast.error("Er ging iets mis bij het inloggen. Probeer het opnieuw.")
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleDemoLogin = async (email: string, password: string, role: string) => {
-    setLoginData({ email, wachtwoord: password })
     setIsLoading(true)
     
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, wachtwoord: password }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        localStorage.setItem('token', data.data.token)
-        localStorage.setItem('user', JSON.stringify(data.data.user))
-        localStorage.setItem('isLoggedIn', 'true')
-
-        toast({
-          title: `Demo login als ${role}`,
-          description: "Je bent ingelogd met demo gegevens",
+      const success = await login(email, password)
+      
+      if (success) {
+        toast.success(`Demo login als ${role}`, {
+          description: "Je bent ingelogd met demo gegevens"
         })
-
         router.push("/")
-      } else {
-        toast({
-          title: "Demo login mislukt",
-          description: data.message,
-          variant: "destructive",
-        })
       }
     } catch (error) {
-      toast({
-        title: "Verbindingsfout",
-        description: "Er ging iets mis bij de demo login.",
-        variant: "destructive",
-      })
+      toast.error("Er ging iets mis bij de demo login.")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50 flex items-center justify-center p-4">
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
         {/* Linker kant - Branding & Features */}
         <div className="hidden lg:block space-y-8">
@@ -292,12 +241,12 @@ export default function LoginPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => handleDemoLogin("admin@rijschool.nl", "admin123", "Admin")}
+                  onClick={() => handleDemoLogin("eigenaar@rijschool.nl", "eigenaar123", "Eigenaar")}
                   disabled={isLoading}
                   className="bg-white/50"
                 >
                   <Users className="h-4 w-4 mr-2" />
-                  Admin
+                  Eigenaar
                 </Button>
                 <Button
                   variant="outline"
@@ -309,29 +258,20 @@ export default function LoginPage() {
                   Instructeur
                 </Button>
               </div>
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Inloggen...
-                </>
-              ) : (
-                "Inloggen"
-              )}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            Heb je nog geen account?{" "}
-            <Link href="/register" className="underline">
-              Registreren
-            </Link>
-          </div>
-          <div className="mt-2 text-xs text-center text-muted-foreground">
-            Demo: admin@rijschool.nl / admin123
-          </div>
-        </CardContent>
-      </Card>
+
+              <div className="mt-4 text-center text-sm">
+                Heb je nog geen account?{" "}
+                <Link href="/register" className="underline">
+                  Registreren
+                </Link>
+              </div>
+              <div className="mt-2 text-xs text-center text-muted-foreground">
+                Demo: eigenaar@rijschool.nl / eigenaar123
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }
