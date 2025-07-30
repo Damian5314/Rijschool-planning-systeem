@@ -13,7 +13,7 @@ interface AuthContextType {
   register: (naam: string, email: string, password: string, rol?: string) => Promise<boolean>
   updateProfile: (userData: Partial<User>) => void
   isAuthenticated: boolean
-  isAdmin: boolean
+  isEigenaar: boolean
   isInstructeur: boolean
 }
 
@@ -118,8 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     updateProfile,
     isAuthenticated: !!user,
-    isAdmin: user?.rol === 'admin',
-    isInstructeur: user?.rol === 'instructeur' || user?.rol === 'admin',
+    isEigenaar: user?.rol === 'eigenaar',
+    isInstructeur: user?.rol === 'instructeur' || user?.rol === 'eigenaar',
   }
 
   return (
@@ -165,22 +165,22 @@ export function withAuth<P extends object>(Component: React.ComponentType<P>) {
   }
 }
 
-// HOC for admin-only routes
-export function withAdminAuth<P extends object>(Component: React.ComponentType<P>) {
-  return function AdminAuthenticatedComponent(props: P) {
-    const { isAuthenticated, isAdmin, loading } = useAuth()
+// HOC for eigenaar-only routes
+export function withEigenaarAuth<P extends object>(Component: React.ComponentType<P>) {
+  return function EigenaarAuthenticatedComponent(props: P) {
+    const { isAuthenticated, isEigenaar, loading } = useAuth()
     const router = useRouter()
 
     useEffect(() => {
       if (!loading) {
         if (!isAuthenticated) {
           router.push('/login')
-        } else if (!isAdmin) {
+        } else if (!isEigenaar) {
           router.push('/')
           toast.error('Je hebt geen toegang tot deze pagina')
         }
       }
-    }, [isAuthenticated, isAdmin, loading, router])
+    }, [isAuthenticated, isEigenaar, loading, router])
 
     if (loading) {
       return (
@@ -190,7 +190,7 @@ export function withAdminAuth<P extends object>(Component: React.ComponentType<P
       )
     }
 
-    if (!isAuthenticated || !isAdmin) {
+    if (!isAuthenticated || !isEigenaar) {
       return null
     }
 
