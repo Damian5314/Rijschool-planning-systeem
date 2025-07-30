@@ -29,7 +29,7 @@ export default function LoginPage() {
 
     // Test credentials
     const validCredentials = [
-      { email: "admin@rijschool.nl", password: "admin123", role: "Admin" },
+      { email: "eigenaar@rijschool.nl", password: "eigenaar123", role: "Eigenaar" },
       { email: "instructeur@rijschool.nl", password: "instructeur123", role: "Instructeur" },
       { email: "demo@rijschool.nl", password: "demo123", role: "Demo" },
       { email: "test@test.nl", password: "test", role: "Test" },
@@ -260,7 +260,7 @@ export default function LoginPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => handleDemoLogin("Admin", { email: "admin@rijschool.nl", password: "admin123" })}
+                  onClick={() => handleDemoLogin("Eigenaar", { email: "eigenaar@rijschool.nl", password: "eigenaar123" })}
                   disabled={isLoading}
                   className="bg-white/50"
                 >
@@ -282,7 +282,7 @@ export default function LoginPage() {
                 <h4 className="font-medium text-sm mb-2">Test Accounts:</h4>
                 <div className="space-y-1 text-xs text-gray-600">
                   <div>
-                    <strong>Admin:</strong> admin@rijschool.nl / admin123
+                    <strong>Eigenaar:</strong> eigenaar@rijschool.nl / eigenaar123
                   </div>
                   <div>
                     <strong>Instructeur:</strong> instructeur@rijschool.nl / instructeur123
