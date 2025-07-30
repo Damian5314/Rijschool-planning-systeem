@@ -72,8 +72,8 @@ const validateSignup = [
   commonValidations.password,
   body('rol')
     .optional()
-    .isIn(['gebruiker', 'admin', 'instructeur'])
-    .withMessage('Rol moet gebruiker, admin of instructeur zijn'),
+    .isIn(['gebruiker', 'eigenaar', 'instructeur'])
+    .withMessage('Rol moet gebruiker, eigenaar of instructeur zijn'),
   handleValidationErrors
 ]
 
