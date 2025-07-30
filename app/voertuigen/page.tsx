@@ -1,27 +1,32 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle, Edit, Trash2 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "@/components/ui/use-toast"
-import type { Vehicle, Instructor } from "@/lib/data" // Assuming Instructor interface is also here
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Plus, Search, Edit, Trash2, Car, Gauge, Wrench, CheckCircle } from "lucide-react"
+import { toast } from "sonner"
+import { useAuth } from "@/contexts/auth-context"
+import { api, Vehicle } from "@/lib/api"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useDebounce } from "@/hooks/useDebounce"
 
 export default function VoertuigenPage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [instructors, setInstructors] = useState<Instructor[]>([])
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isOnderhoudDialogOpen, setIsOnderhoudDialogOpen] = useState(false)
   const [isKmDialogOpen, setIsKmDialogOpen] = useState(false)
-  const [selectedVoertuig, setSelectedVoertuig] = useState<any>(null)
+  const [selectedVoertuig, setSelectedVoertuig] = useState<Vehicle | null>(null)
   const [onderhoudDatum, setOnderhoudDatum] = useState<Date>()
   const [nieuweKm, setNieuweKm] = useState("")
-  const [voertuigen, setVoertuigen] = useState([])
+  const [voertuigen, setVoertuigen] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const [newVoertuig, setNewVoertuig] = useState({
     merk: "",
@@ -40,46 +45,45 @@ export default function VoertuigenPage() {
 
   // Fetch voertuigen from backend
   useEffect(() => {
-    fetchVoertuigen()
-  }, [])
+    if (isAuthenticated && !authLoading) {
+      fetchVoertuigen()
+    }
+  }, [isAuthenticated, authLoading])
 
   const fetchVoertuigen = async () => {
     try {
-      const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:5000/api/vehicles', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setVoertuigen(data.data || [])
+      const response = await api.getVehicles()
+      if (response.success) {
+        setVoertuigen(response.data || [])
       } else {
-        toast({
-          title: "Fout bij laden",
+        toast.error("Fout bij laden", {
           description: "Kon voertuigen niet laden",
-          variant: "destructive"
         })
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error)
-      toast({
-        title: "Verbinding fout",
+      toast.error("Verbinding fout", {
         description: "Kon geen verbinding maken met de server",
-        variant: "destructive"
       })
     } finally {
       setLoading(false)
     }
   }
 
-  const filteredVoertuigen = voertuigen.filter((voertuig: any) =>
-    voertuig.merk?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    voertuig.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    voertuig.kenteken?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Debounced search for better performance
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  
+  // Memoized filtered results for better performance
+  const filteredVoertuigen = useMemo(() => {
+    if (!debouncedSearchTerm.trim()) return voertuigen
+    
+    const term = debouncedSearchTerm.toLowerCase()
+    return voertuigen.filter((voertuig: Vehicle) =>
+      voertuig.merk?.toLowerCase().includes(term) ||
+      voertuig.model?.toLowerCase().includes(term) ||
+      voertuig.kenteken?.toLowerCase().includes(term)
+    )
+  }, [voertuigen, debouncedSearchTerm])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -100,16 +104,51 @@ export default function VoertuigenPage() {
 
   const addVoertuig = async () => {
     if (!newVoertuig.merk || !newVoertuig.model || !newVoertuig.kenteken) {
-      toast({
-        title: "Validatie fout",
+      toast.error("Validatie fout", {
         description: "Merk, model en kenteken zijn verplicht",
-        variant: "destructive"
       })
       return
     }
 
+    // Optimistic update - add immediately to UI
+    const tempVehicle: Vehicle = {
+      id: Date.now(), // Temporary ID
+      merk: newVoertuig.merk,
+      model: newVoertuig.model,
+      kenteken: newVoertuig.kenteken,
+      bouwjaar: parseInt(newVoertuig.bouwjaar),
+      transmissie: newVoertuig.transmissie as 'Handgeschakeld' | 'Automaat',
+      brandstof: newVoertuig.brandstof as 'benzine' | 'diesel' | 'elektrisch' | 'hybride',
+      kilometerstand: parseInt(newVoertuig.kilometerstand) || 0,
+      status: newVoertuig.status as 'beschikbaar' | 'onderhoud' | 'defect',
+      instructeur_id: newVoertuig.instructeur_id ? parseInt(newVoertuig.instructeur_id) : undefined,
+      laatste_onderhoud: newVoertuig.laatste_onderhoud,
+      volgende_onderhoud: newVoertuig.volgende_onderhoud,
+      apk_datum: newVoertuig.apk_datum,
+    }
+
+    setVoertuigen(prev => [...prev, tempVehicle])
+    setIsDialogOpen(false)
+    
+    // Reset form
+    const resetForm = {
+      merk: "",
+      model: "",
+      bouwjaar: "",
+      kenteken: "",
+      transmissie: "",
+      brandstof: "",
+      kilometerstand: "",
+      status: "beschikbaar",
+      instructeur_id: "",
+      laatste_onderhoud: "",
+      volgende_onderhoud: "",
+      apk_datum: "",
+    }
+    setNewVoertuig(resetForm)
+
     try {
-      const token = localStorage.getItem('authToken')
+      const token = localStorage.getItem('auth_token')
       const response = await fetch('http://localhost:5000/api/vehicles', {
         method: 'POST',
         headers: {
@@ -125,39 +164,24 @@ export default function VoertuigenPage() {
 
       if (response.ok) {
         const data = await response.json()
-        await fetchVoertuigen() // Refresh list
-        setNewVoertuig({
-          merk: "",
-          model: "",
-          bouwjaar: "",
-          kenteken: "",
-          transmissie: "",
-          brandstof: "",
-          kilometerstand: "",
-          status: "beschikbaar",
-          instructeur_id: "",
-          laatste_onderhoud: "",
-          volgende_onderhoud: "",
-          apk_datum: "",
-        })
-        setIsDialogOpen(false)
-        toast({
-          title: "Voertuig toegevoegd",
+        // Replace temp vehicle with real one from server
+        setVoertuigen(prev => prev.map(v => v.id === tempVehicle.id ? data.data : v))
+        toast.success("Voertuig toegevoegd", {
           description: `${newVoertuig.merk} ${newVoertuig.model} is succesvol toegevoegd.`,
         })
       } else {
+        // Rollback optimistic update
+        setVoertuigen(prev => prev.filter(v => v.id !== tempVehicle.id))
         const errorData = await response.json()
-        toast({
-          title: "Fout bij toevoegen",
+        toast.error("Fout bij toevoegen", {
           description: errorData.message || "Kon voertuig niet toevoegen",
-          variant: "destructive"
         })
       }
     } catch (error) {
-      toast({
-        title: "Verbinding fout",
+      // Rollback optimistic update
+      setVoertuigen(prev => prev.filter(v => v.id !== tempVehicle.id))
+      toast.error("Verbinding fout", {
         description: "Kon geen verbinding maken met de server",
-        variant: "destructive"
       })
     }
   }
@@ -166,7 +190,7 @@ export default function VoertuigenPage() {
     if (!selectedVoertuig || !nieuweKm) return
 
     try {
-      const token = localStorage.getItem('authToken')
+      const token = localStorage.getItem('auth_token')
       const response = await fetch(`http://localhost:5000/api/vehicles/${selectedVoertuig.id}`, {
         method: 'PUT',
         headers: {
@@ -182,22 +206,17 @@ export default function VoertuigenPage() {
         await fetchVoertuigen()
         setIsKmDialogOpen(false)
         setNieuweKm("")
-        toast({
-          title: "Kilometerstand bijgewerkt",
+        toast.success("Kilometerstand bijgewerkt", {
           description: `Kilometerstand voor ${selectedVoertuig.kenteken} is bijgewerkt naar ${parseInt(nieuweKm).toLocaleString()} km.`,
         })
       } else {
-        toast({
-          title: "Fout bij bijwerken",
+        toast.error("Fout bij bijwerken", {
           description: "Kon kilometerstand niet bijwerken",
-          variant: "destructive"
         })
       }
     } catch (error) {
-      toast({
-        title: "Verbinding fout",
+      toast.error("Verbinding fout", {
         description: "Kon geen verbinding maken met de server",
-        variant: "destructive"
       })
     }
   }
@@ -205,8 +224,17 @@ export default function VoertuigenPage() {
   const deleteVoertuig = async (id: number) => {
     if (!confirm("Weet je zeker dat je dit voertuig wilt verwijderen?")) return
 
+    // Store original vehicle for potential rollback
+    const originalVehicle = voertuigen.find(v => v.id === id)
+    
+    // Optimistic update - remove immediately from UI
+    setVoertuigen(prev => prev.filter(v => v.id !== id))
+    toast.success("Voertuig verwijderd", {
+      description: "Het voertuig is succesvol verwijderd.",
+    })
+
     try {
-      const token = localStorage.getItem('authToken')
+      const token = localStorage.getItem('auth_token')
       const response = await fetch(`http://localhost:5000/api/vehicles/${id}`, {
         method: 'DELETE',
         headers: {
@@ -215,24 +243,22 @@ export default function VoertuigenPage() {
         }
       })
 
-      if (response.ok) {
-        await fetchVoertuigen()
-        toast({
-          title: "Voertuig verwijderd",
-          description: "Het voertuig is succesvol verwijderd.",
-        })
-      } else {
-        toast({
-          title: "Fout bij verwijderen",
+      if (!response.ok) {
+        // Rollback optimistic update
+        if (originalVehicle) {
+          setVoertuigen(prev => [...prev, originalVehicle].sort((a, b) => a.id - b.id))
+        }
+        toast.error("Fout bij verwijderen", {
           description: "Kon voertuig niet verwijderen",
-          variant: "destructive"
         })
       }
     } catch (error) {
-      toast({
-        title: "Verbinding fout",
+      // Rollback optimistic update
+      if (originalVehicle) {
+        setVoertuigen(prev => [...prev, originalVehicle].sort((a, b) => a.id - b.id))
+      }
+      toast.error("Verbinding fout", {
         description: "Kon geen verbinding maken met de server",
-        variant: "destructive"
       })
     }
   }
@@ -241,7 +267,8 @@ export default function VoertuigenPage() {
     if (!selectedVoertuig || !onderhoudDatum) return
 
     try {
-      const token = localStorage.getItem('authToken')
+      const token = localStorage.getItem('auth_token')
+      const formattedDate = onderhoudDatum.toISOString().split('T')[0]
       const response = await fetch(`http://localhost:5000/api/vehicles/${selectedVoertuig.id}/maintenance`, {
         method: 'PUT',
         headers: {
@@ -249,7 +276,7 @@ export default function VoertuigenPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          volgende_onderhoud: format(onderhoudDatum, "yyyy-MM-dd")
+          volgende_onderhoud: formattedDate
         })
       })
 
@@ -257,38 +284,77 @@ export default function VoertuigenPage() {
         await fetchVoertuigen()
         setIsOnderhoudDialogOpen(false)
         setOnderhoudDatum(undefined)
-        toast({
-          title: "Onderhoud gepland",
-          description: `Onderhoud voor ${selectedVoertuig.kenteken} is gepland voor ${format(onderhoudDatum, "dd MMMM yyyy", { locale: nl })}.`,
+        toast.success("Onderhoud gepland", {
+          description: `Onderhoud voor ${selectedVoertuig.kenteken} is gepland voor ${onderhoudDatum.toLocaleDateString('nl-NL')}.`,
         })
       } else {
-        toast({
-          title: "Fout bij plannen",
+        toast.error("Fout bij plannen", {
           description: "Kon onderhoud niet plannen",
-          variant: "destructive"
         })
       }
     } catch (error) {
-      toast({
-        title: "Verbinding fout",
+      toast.error("Verbinding fout", {
         description: "Kon geen verbinding maken met de server",
-        variant: "destructive"
       })
     }
   }
 
-  if (loading) {
+  if (loading || authLoading || !isAuthenticated) {
     return (
-      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-          <div className="h-96 bg-gray-200 rounded"></div>
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-10 w-40" />
         </div>
+
+        {/* Statistics Cards Skeleton */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="card-hover glass-effect">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-1" />
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Table Skeleton */}
+        <Card className="card-hover glass-effect">
+          <CardHeader>
+            <Skeleton className="h-6 w-40 mb-4" />
+            <div className="flex items-center space-x-2">
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-10 w-64" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <Skeleton className="h-12 w-20" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-32 mb-2" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-4 w-16" />
+                  <div className="flex space-x-2">
+                    {Array.from({ length: 4 }).map((_, j) => (
+                      <Skeleton key={j} className="h-8 w-8 rounded" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -422,7 +488,7 @@ export default function VoertuigenPage() {
               {voertuigen.length}
             </div>
             <p className="text-xs text-muted-foreground">
-              {voertuigen.filter((v: any) => v.status === "beschikbaar").length} beschikbaar
+              {voertuigen.filter((v: Vehicle) => v.status === "beschikbaar").length} beschikbaar
             </p>
           </CardContent>
         </Card>
@@ -435,7 +501,7 @@ export default function VoertuigenPage() {
           <CardContent>
             <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
               {voertuigen.length > 0 
-                ? Math.round(voertuigen.reduce((acc: number, v: any) => acc + (v.kilometerstand || 0), 0) / voertuigen.length).toLocaleString()
+                ? Math.round(voertuigen.reduce((acc: number, v: Vehicle) => acc + (v.kilometerstand || 0), 0) / voertuigen.length).toLocaleString()
                 : 0
               }
             </div>
@@ -450,7 +516,7 @@ export default function VoertuigenPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-              {voertuigen.filter((v: any) => v.status === "onderhoud").length}
+              {voertuigen.filter((v: Vehicle) => v.status === "onderhoud").length}
             </div>
             <p className="text-xs text-muted-foreground">Voertuigen</p>
           </CardContent>
@@ -463,7 +529,7 @@ export default function VoertuigenPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              {voertuigen.filter((v: any) => v.status === "beschikbaar").length}
+              {voertuigen.filter((v: Vehicle) => v.status === "beschikbaar").length}
             </div>
             <p className="text-xs text-muted-foreground">Voertuigen</p>
           </CardContent>
@@ -473,6 +539,15 @@ export default function VoertuigenPage() {
       <Card className="card-hover glass-effect">
         <CardHeader>
           <CardTitle>Overzicht Voertuigen</CardTitle>
+          <div className="flex items-center space-x-2 mt-4">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Zoek voertuigen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -488,7 +563,7 @@ export default function VoertuigenPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredVoertuigen.map((voertuig: any) => (
+              {filteredVoertuigen.map((voertuig: Vehicle) => (
                 <TableRow key={voertuig.id}>
                   <TableCell className="font-medium">{voertuig.kenteken}</TableCell>
                   <TableCell>
@@ -560,183 +635,6 @@ export default function VoertuigenPage() {
           </Table>
         </CardContent>
       </Card>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{currentVehicle ? "Voertuig Bewerken" : "Nieuw Voertuig Toevoegen"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="brand" className="text-right">
-                Merk
-              </Label>
-              <Input id="brand" name="brand" defaultValue={currentVehicle?.brand} className="col-span-3" required />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="model" className="text-right">
-                Model
-              </Label>
-              <Input id="model" name="model" defaultValue={currentVehicle?.model} className="col-span-3" required />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="year" className="text-right">
-                Bouwjaar
-              </Label>
-              <Input
-                id="year"
-                name="year"
-                type="number"
-                defaultValue={currentVehicle?.year}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="licensePlate" className="text-right">
-                Kenteken
-              </Label>
-              <Input
-                id="licensePlate"
-                name="licensePlate"
-                defaultValue={currentVehicle?.licensePlate}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">
-                Transmissie
-              </Label>
-              <Select
-                name="type"
-                defaultValue={currentVehicle?.type || "manual"} // Updated default value
-                required
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Schakel</SelectItem>
-                  <SelectItem value="automatic">Automaat</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="fuelType" className="text-right">
-                Brandstof
-              </Label>
-              <Select
-                name="fuelType"
-                defaultValue={currentVehicle?.fuelType || "benzine"} // Updated default value
-                required
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer brandstof" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="benzine">Benzine</SelectItem>
-                  <SelectItem value="diesel">Diesel</SelectItem>
-                  <SelectItem value="elektrisch">Elektrisch</SelectItem>
-                  <SelectItem value="hybride">Hybride</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="mileage" className="text-right">
-                Kilometerstand
-              </Label>
-              <Input
-                id="mileage"
-                name="mileage"
-                type="number"
-                defaultValue={currentVehicle?.mileage}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="lastMaintenance" className="text-right">
-                Laatste Onderhoud
-              </Label>
-              <Input
-                id="lastMaintenance"
-                name="lastMaintenance"
-                type="date"
-                defaultValue={currentVehicle?.lastMaintenance}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="nextMaintenance" className="text-right">
-                Volgende Onderhoud
-              </Label>
-              <Input
-                id="nextMaintenance"
-                name="nextMaintenance"
-                type="date"
-                defaultValue={currentVehicle?.nextMaintenance}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="keuringDate" className="text-right">
-                APK Datum
-              </Label>
-              <Input
-                id="keuringDate"
-                name="keuringDate"
-                type="date"
-                defaultValue={currentVehicle?.keuringDate}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Status
-              </Label>
-              <Select
-                name="status"
-                defaultValue={currentVehicle?.status || "beschikbaar"} // Updated default value
-                required
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beschikbaar">Beschikbaar</SelectItem>
-                  <SelectItem value="onderhoud">Onderhoud</SelectItem>
-                  <SelectItem value="defect">Defect</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="instructor" className="text-right">
-                Toegewezen Instructeur
-              </Label>
-              <Select
-                name="instructor"
-                defaultValue={currentVehicle?.instructor || ""} // Updated default value
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer instructeur (optioneel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Geen</SelectItem>
-                  {instructors.map((instructor) => (
-                    <SelectItem key={instructor.id} value={instructor.id}>
-                      {instructor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button type="submit">{currentVehicle ? "Opslaan" : "Toevoegen"}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
