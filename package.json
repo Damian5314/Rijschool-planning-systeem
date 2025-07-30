@@ -46,6 +46,7 @@
   "license": "MIT",
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
+    "@next/swc-linux-x64-gnu": "^15.4.5",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "latest",
