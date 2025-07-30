@@ -1,49 +1,41 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 interface AuthGuardProps {
   children: React.ReactNode
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
+  const router = useRouter()
   const pathname = usePathname()
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [userRole, setUserRole] = useState<string | null>(null)
 
   useEffect(() => {
-    // Check authentication status
-    const checkAuth = () => {
-      try {
-        const isLoggedIn = localStorage.getItem("isLoggedIn")
-        const role = localStorage.getItem("userRole")
-        const email = localStorage.getItem("userEmail")
-
-        if (isLoggedIn === "true" && email) {
-          setIsAuthenticated(true)
-          setUserRole(role)
-        } else {
-          setIsAuthenticated(false)
-          router.push("/login")
-        }
-      } catch (error) {
-        console.error("Auth check error:", error)
-        setIsAuthenticated(false)
-        router.push("/login")
-      }
+    // Skip auth check for login and register pages
+    if (pathname === '/login' || pathname === '/register') {
+      return
     }
 
-    checkAuth()
-  }, [router, pathname])
+    // Redirect to login if not authenticated and not loading
+    if (!loading && !isAuthenticated) {
+      router.push('/login')
+    }
+  }, [isAuthenticated, loading, router, pathname])
+
+  // Skip auth guard for login and register pages
+  if (pathname === '/login' || pathname === '/register') {
+    return <>{children}</>
+  }
 
   // Loading state
-  if (isAuthenticated === null) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50 flex items-center justify-center">
         <Card className="w-96">
           <CardContent className="flex flex-col items-center justify-center p-8">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
@@ -54,30 +46,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
     )
   }
 
-  // Not authenticated
+  // Not authenticated - will redirect
   if (!isAuthenticated) {
-    return null // Will redirect to login
-  }
-
-  // Role-based access control (optional - can be extended)
-  const hasAccess = () => {
-    // For now, all authenticated users have access
-    // You can add role-based restrictions here if needed
-    return true
-  }
-
-  if (!hasAccess()) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="flex flex-col items-center justify-center p-8">
-            <p className="text-red-600 text-center">
-              Je hebt geen toegang tot deze pagina.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return null
   }
 
   return <>{children}</>
