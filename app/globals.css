@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 220 14% 96%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
@@ -71,7 +71,8 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-gray-50 text-foreground;
+    background-color: #fafafa;
   }
 }
 
@@ -95,6 +96,153 @@
 /* Interactive card effects */
 .card-hover {
   transition: all 0.3s ease;
+  background-color: white;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Glass effect for cards */
+.glass-effect {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Button loading states */
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Optimistic update animations */
+.fade-in-up {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.fade-out-down {
+  animation: fadeOutDown 0.3s ease-in;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOutDown {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Sidebar styling */
+[data-sidebar="sidebar"] {
+  background-color: white !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Calendar styling improvements */
+.rdp {
+  margin: 0;
+}
+
+.rdp-months {
+  margin: 0;
+}
+
+.rdp-month {
+  margin: 0;
+}
+
+.rdp-table {
+  margin: 0;
+}
+
+/* Custom calendar popover styling */
+[data-radix-popper-content-wrapper] .rdp {
+  padding: 16px;
+}
+
+/* Calendar navigation buttons */
+.rdp-nav_button {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.rdp-nav_button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Calendar day styling */
+.rdp-day {
+  transition: all 0.2s ease;
+  border-radius: 6px;
+}
+
+.rdp-day:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.rdp-day_selected {
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.rdp-day_today {
+  background-color: rgba(59, 130, 246, 0.1);
+  font-weight: 600;
+}
+
+/* Smooth transitions for all elements */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Loading skeleton pulse animation enhancement */
+.animate-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .card-hover:hover {
