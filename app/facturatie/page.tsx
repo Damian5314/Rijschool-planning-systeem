@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Search, Filter, Download, Mail, Eye, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,19 +18,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { nl } from "date-fns/locale"
-import {
-  mockInvoices,
-  mockStudents,
-  mockInstructors,
-  generateInvoiceNumber,
-  calculateInvoiceTotals,
-  type Invoice,
-  type InvoiceItem,
-} from "@/lib/data"
-import { PDFGenerator } from "@/components/pdf-generator"
+
+interface InvoiceItem {
+  id: string
+  description: string
+  date: string
+  time?: string
+  duration: number
+  unitPrice: number
+  quantity: number
+  discount: number
+  total: number
+}
+
+interface Invoice {
+  id: string
+  invoiceNumber: string
+  studentId: string
+  studentName: string
+  studentEmail: string
+  studentAddress: string
+  instructorId: string
+  instructorName: string
+  date: string
+  dueDate: string
+  items: InvoiceItem[]
+  subtotal: number
+  discount: number
+  taxRate: number
+  taxAmount: number
+  total: number
+  status: "concept" | "verzonden" | "betaald" | "vervallen"
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
 
 const statusColors = {
   concept: "bg-gray-100 text-gray-800",
@@ -46,13 +71,44 @@ const statusLabels = {
   vervallen: "Vervallen",
 }
 
+// Mock data
+const mockStudents = [
+  { id: "1", name: "Emma van der Berg", email: "emma@example.com", address: "Hoofdstraat 123, 1234 AB Amsterdam" },
+  { id: "2", name: "Tom Jansen", email: "tom@example.com", address: "Kerkstraat 45, 5678 CD Rotterdam" },
+  { id: "3", name: "Sophie Willems", email: "sophie@example.com", address: "Dorpsstraat 67, 9012 EF Utrecht" },
+]
+
+const mockInstructors = [
+  { id: "1", name: "Jan Bakker" },
+  { id: "2", name: "Lisa de Vries" },
+  { id: "3", name: "Mark Peters" },
+]
+
+const generateInvoiceNumber = () => {
+  const year = new Date().getFullYear()
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+  return `${year}-${random}`
+}
+
+const calculateInvoiceTotals = (items: InvoiceItem[]) => {
+  const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
+  const discount = items.reduce((sum, item) => sum + item.discount, 0)
+  const netAmount = subtotal - discount
+  const taxAmount = netAmount * 0.21 // 21% BTW
+  const total = netAmount + taxAmount
+  
+  return { subtotal, discount, taxAmount, total }
+}
+
 export default function FacturatiePage() {
-  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices)
+  const { toast } = useToast()
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   // Nieuwe factuur state
   const [newInvoice, setNewInvoice] = useState({
@@ -71,6 +127,82 @@ export default function FacturatiePage() {
     quantity: 1,
     discount: 0,
   })
+
+  // Mock facturen laden
+  useEffect(() => {
+    const mockInvoices: Invoice[] = [
+      {
+        id: "1",
+        invoiceNumber: "2024-001",
+        studentId: "1",
+        studentName: "Emma van der Berg",
+        studentEmail: "emma@example.com",
+        studentAddress: "Hoofdstraat 123, 1234 AB Amsterdam",
+        instructorId: "1",
+        instructorName: "Jan Bakker",
+        date: "2024-12-01",
+        dueDate: "2024-12-31",
+        items: [
+          {
+            id: "1",
+            description: "Rijles - Automaat",
+            date: "2024-11-15",
+            time: "10:00",
+            duration: 60,
+            unitPrice: 48,
+            quantity: 1,
+            discount: 0,
+            total: 48,
+          }
+        ],
+        subtotal: 48,
+        discount: 0,
+        taxRate: 21,
+        taxAmount: 10.08,
+        total: 58.08,
+        status: "verzonden",
+        notes: "Eerste factuur",
+        createdAt: "2024-12-01T10:00:00Z",
+        updatedAt: "2024-12-01T10:00:00Z",
+      },
+      {
+        id: "2",
+        invoiceNumber: "2024-002",
+        studentId: "2",
+        studentName: "Tom Jansen",
+        studentEmail: "tom@example.com",
+        studentAddress: "Kerkstraat 45, 5678 CD Rotterdam",
+        instructorId: "2",
+        instructorName: "Lisa de Vries",
+        date: "2024-12-05",
+        dueDate: "2025-01-05",
+        items: [
+          {
+            id: "2",
+            description: "Rijles pakket - 5 lessen",
+            date: "2024-11-20",
+            time: "",
+            duration: 300,
+            unitPrice: 48,
+            quantity: 5,
+            discount: 24,
+            total: 216,
+          }
+        ],
+        subtotal: 240,
+        discount: 24,
+        taxRate: 21,
+        taxAmount: 45.36,
+        total: 261.36,
+        status: "betaald",
+        createdAt: "2024-12-05T14:00:00Z",
+        updatedAt: "2024-12-10T09:00:00Z",
+      }
+    ]
+    
+    setInvoices(mockInvoices)
+    setLoading(false)
+  }, [])
 
   // Filter facturen
   const filteredInvoices = invoices.filter((invoice) => {
@@ -94,7 +226,11 @@ export default function FacturatiePage() {
 
   const handleAddItem = () => {
     if (!newItem.description) {
-      toast.error("Beschrijving is verplicht")
+      toast({
+        title: "Validatiefout",
+        description: "Beschrijving is verplicht",
+        variant: "destructive",
+      })
       return
     }
 
@@ -126,7 +262,10 @@ export default function FacturatiePage() {
       discount: 0,
     })
 
-    toast.success("Item toegevoegd")
+    toast({
+      title: "Item toegevoegd",
+      description: "Item is toegevoegd aan de factuur",
+    })
   }
 
   const handleRemoveItem = (itemId: string) => {
@@ -134,12 +273,19 @@ export default function FacturatiePage() {
       ...prev,
       items: prev.items.filter((item) => item.id !== itemId),
     }))
-    toast.success("Item verwijderd")
+    toast({
+      title: "Item verwijderd",
+      description: "Item is verwijderd van de factuur",
+    })
   }
 
   const handleCreateInvoice = () => {
     if (!newInvoice.studentId || !newInvoice.instructorId || newInvoice.items.length === 0) {
-      toast.error("Vul alle verplichte velden in en voeg minimaal één item toe")
+      toast({
+        title: "Validatiefout",
+        description: "Vul alle verplichte velden in en voeg minimaal één item toe",
+        variant: "destructive",
+      })
       return
     }
 
@@ -147,7 +293,11 @@ export default function FacturatiePage() {
     const instructor = mockInstructors.find((i) => i.id === newInvoice.instructorId)
 
     if (!student || !instructor) {
-      toast.error("Student of instructeur niet gevonden")
+      toast({
+        title: "Fout",
+        description: "Student of instructeur niet gevonden",
+        variant: "destructive",
+      })
       return
     }
 
@@ -188,7 +338,10 @@ export default function FacturatiePage() {
       notes: "",
     })
 
-    toast.success("Factuur aangemaakt")
+    toast({
+      title: "Factuur aangemaakt",
+      description: `Factuur ${invoice.invoiceNumber} is succesvol aangemaakt`,
+    })
   }
 
   const handleSendInvoice = async (invoice: Invoice) => {
@@ -202,15 +355,17 @@ export default function FacturatiePage() {
         ),
       )
 
-      toast.success(`Factuur ${invoice.invoiceNumber} verzonden naar ${invoice.studentEmail}`)
+      toast({
+        title: "Factuur verzonden",
+        description: `Factuur ${invoice.invoiceNumber} is verzonden naar ${invoice.studentEmail}`,
+      })
     } catch (error) {
-      toast.error("Fout bij verzenden van factuur")
+      toast({
+        title: "Fout",
+        description: "Er is een fout opgetreden bij het verzenden van de factuur",
+        variant: "destructive",
+      })
     }
-  }
-
-  const handleDownloadPDF = (invoice: Invoice) => {
-    // PDF download wordt gehandeld door PDFGenerator component
-    toast.success(`PDF van factuur ${invoice.invoiceNumber} wordt gedownload`)
   }
 
   const handleViewInvoice = (invoice: Invoice) => {
@@ -222,7 +377,28 @@ export default function FacturatiePage() {
     setInvoices((prev) =>
       prev.map((i) => (i.id === invoiceId ? { ...i, status: newStatus, updatedAt: new Date().toISOString() } : i)),
     )
-    toast.success("Status bijgewerkt")
+    toast({
+      title: "Status bijgewerkt",
+      description: "Factuur status is succesvol gewijzigd",
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+            <div className="h-96 bg-gray-200 rounded mt-6"></div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -231,7 +407,9 @@ export default function FacturatiePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Facturatie</h1>
+            <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Facturatie
+            </h1>
             <p className="text-gray-600">Beheer facturen en betalingen</p>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -570,11 +748,9 @@ export default function FacturatiePage() {
                       <Eye className="h-4 w-4" />
                     </Button>
 
-                    <PDFGenerator invoice={invoice}>
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </PDFGenerator>
+                    <Button variant="ghost" size="sm">
+                      <Download className="h-4 w-4" />
+                    </Button>
 
                     {invoice.status === "concept" && (
                       <Button variant="ghost" size="sm" onClick={() => handleSendInvoice(invoice)}>
@@ -701,12 +877,10 @@ export default function FacturatiePage() {
 
                   {/* Acties */}
                   <div className="flex justify-end space-x-2">
-                    <PDFGenerator invoice={selectedInvoice}>
-                      <Button variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download PDF
-                      </Button>
-                    </PDFGenerator>
+                    <Button variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
 
                     {selectedInvoice.status === "concept" && (
                       <Button onClick={() => handleSendInvoice(selectedInvoice)}>

@@ -21,9 +21,122 @@ import {
   Plus,
   ArrowLeft,
 } from "lucide-react"
-import { leerlingenData } from "@/lib/data"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
+
+// Mock data - replace with API call
+const mockLeerlingData = {
+  1: {
+    id: 1,
+    naam: "Emma van der Berg",
+    email: "emma@email.com",
+    telefoon: "06-12345678",
+    adres: "Hoofdstraat 123",
+    postcode: "1234 AB",
+    plaats: "Amsterdam",
+    geboortedatum: "2005-03-15",
+    rijbewijsType: "B",
+    transmissie: "Automaat",
+    status: "Actief",
+    instructeur: "Jan Bakker",
+    instructeurId: 1,
+    tegoed: 150.0,
+    openstaandBedrag: 0.0,
+    leerlingSinds: "2024-01-15",
+    leerlingnummer: "2024-001",
+    debiteurNummer: "DEB-001",
+    chatViaWhatsApp: true,
+    lesGeschiedenis: [
+      {
+        id: 1,
+        datum: "2024-07-08",
+        tijd: "09:00",
+        duur: 60,
+        rijles: "Rijles",
+        type: "les",
+        status: "Voltooid",
+        opmerkingen: "Goed geoefend met parkeren",
+      },
+      {
+        id: 2,
+        datum: "2024-07-05",
+        tijd: "10:00",
+        duur: 60,
+        rijles: "Rijles",
+        type: "les",
+        status: "Voltooid",
+        opmerkingen: "Voorrang oefenen",
+      },
+    ],
+    examens: [
+      {
+        id: 1,
+        datum: "2024-08-15",
+        tijd: "10:30",
+        type: "Praktijkexamen",
+        locatie: "CBR Amsterdam",
+        status: "Gepland",
+      },
+    ],
+    financieel: {
+      totaalBetaald: 450.0,
+      laatsteBetaling: {
+        datum: "2024-07-01",
+        bedrag: 150.0,
+      },
+    },
+  },
+  2: {
+    id: 2,
+    naam: "Tom Jansen",
+    email: "tom@email.com",
+    telefoon: "06-87654321",
+    adres: "Kerkstraat 45",
+    postcode: "5678 CD",
+    plaats: "Rotterdam",
+    geboortedatum: "2004-11-22",
+    rijbewijsType: "B",
+    transmissie: "Schakel",
+    status: "Examen",
+    instructeur: "Lisa de Vries",
+    instructeurId: 2,
+    tegoed: 75.5,
+    openstaandBedrag: 25.0,
+    leerlingSinds: "2023-11-20",
+    leerlingnummer: "2023-045",
+    debiteurNummer: "DEB-045",
+    chatViaWhatsApp: false,
+    lesGeschiedenis: [
+      {
+        id: 1,
+        datum: "2024-07-10",
+        tijd: "14:00",
+        duur: 90,
+        rijles: "Examenvoorbereiding",
+        type: "examen",
+        status: "Voltooid",
+        opmerkingen: "Examen simulatie - goed gegaan",
+      },
+    ],
+    examens: [
+      {
+        id: 1,
+        datum: "2024-07-20",
+        tijd: "09:00",
+        type: "Praktijkexamen",
+        locatie: "CBR Rotterdam",
+        status: "Gepland",
+      },
+    ],
+    financieel: {
+      totaalBetaald: 680.0,
+      laatsteBetaling: {
+        datum: "2024-06-15",
+        bedrag: 120.0,
+      },
+    },
+  },
+}
 
 export default function LeerlingProfiel({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -31,8 +144,8 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const leerlingId = Number.parseInt(params.id)
-    const gevondenLeerling = leerlingenData.find((l) => l.id === leerlingId)
+    const leerlingId = parseInt(params.id)
+    const gevondenLeerling = mockLeerlingData[leerlingId as keyof typeof mockLeerlingData]
 
     if (gevondenLeerling) {
       setLeerling(gevondenLeerling)
@@ -214,7 +327,7 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Leerlingnummer:</span>
-                <span className="font-medium">{leerling.datumLeerlingnummer}</span>
+                <span className="font-medium">{leerling.leerlingnummer}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Debiteursnummer:</span>
@@ -222,7 +335,7 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Leerling sinds:</span>
-                <span className="font-medium">{leerling.leerlingSinds}</span>
+                <span className="font-medium">{new Date(leerling.leerlingSinds).toLocaleDateString('nl-NL')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Instructeur:</span>
@@ -240,6 +353,11 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">€ {leerling.tegoed.toFixed(2)}</div>
+              {leerling.openstaandBedrag > 0 && (
+                <div className="text-sm text-red-600 mt-1">
+                  Openstaand: €{leerling.openstaandBedrag.toFixed(2)}
+                </div>
+              )}
               <Button variant="outline" size="sm" className="mt-2 bg-transparent" onClick={handleUpdateTegoed}>
                 Tegoed bijwerken
               </Button>
@@ -274,7 +392,7 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                               <div className="flex items-center space-x-3">
                                 <Badge className={getRijlesColor(les.type)}>{les.rijles}</Badge>
                                 <span className="text-sm text-gray-600">
-                                  {les.datum} - {les.tijd}
+                                  {new Date(les.datum).toLocaleDateString('nl-NL')} - {les.tijd}
                                 </span>
                               </div>
                               <div className="text-sm font-medium">{les.status}</div>
@@ -322,7 +440,7 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                             <div>
                               <div className="font-medium">{examen.type}</div>
                               <div className="text-sm text-gray-600">
-                                {examen.datum} - {examen.tijd}
+                                {new Date(examen.datum).toLocaleDateString('nl-NL')} - {examen.tijd}
                               </div>
                               <div className="text-sm text-gray-600">{examen.locatie}</div>
                             </div>
@@ -371,7 +489,7 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                       </div>
                     </div>
                     <div className="text-sm text-gray-600">
-                      Laatste betaling: {leerling.financieel.laatsteBetaling.datum} - €{" "}
+                      Laatste betaling: {new Date(leerling.financieel.laatsteBetaling.datum).toLocaleDateString('nl-NL')} - €{" "}
                       {leerling.financieel.laatsteBetaling.bedrag.toFixed(2)}
                     </div>
                   </div>
@@ -435,7 +553,7 @@ export default function LeerlingProfiel({ params }: { params: { id: string } }) 
                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                       <div>
                         <div className="font-medium">Leerling geregistreerd</div>
-                        <div className="text-sm text-gray-600">{leerling.leerlingSinds}</div>
+                        <div className="text-sm text-gray-600">{new Date(leerling.leerlingSinds).toLocaleDateString('nl-NL')}</div>
                       </div>
                     </div>
                   </div>

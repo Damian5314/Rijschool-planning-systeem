@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +11,8 @@ import { Car, Eye, EyeOff, Lock, Mail, Shield, Users, Award } from "lucide-react
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
 export default function LoginPage() {
   const { toast } = useToast()
   const router = useRouter()
@@ -21,68 +21,102 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [loginData, setLoginData] = useState({
     email: "",
-    password: "",
+    wachtwoord: "",
   })
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     setIsLoading(true)
 
-    // Test credentials
-    const validCredentials = [
-      { email: "admin@rijschool.nl", password: "admin123", role: "Eigenaar" },
-      { email: "instructeur@rijschool.nl", password: "instructeur123", role: "Instructeur" },
-      { email: "demo@rijschool.nl", password: "demo123", role: "Demo" },
-      { email: "test@test.nl", password: "test", role: "Test" },
-    ]
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData),
+      })
 
-    // Simuleer login proces
-    setTimeout(() => {
-      const user = validCredentials.find(
-        (cred) => cred.email === loginData.email && cred.password === loginData.password,
-      )
+      const data = await response.json()
 
-      if (user || (loginData.email && loginData.password)) {
-        // Set authentication in localStorage
-        localStorage.setItem("isLoggedIn", "true")
-        localStorage.setItem("userRole", user?.role || "Gebruiker")
-        localStorage.setItem("userEmail", loginData.email)
+      if (data.success) {
+        // Store authentication data
+        localStorage.setItem('token', data.data.token)
+        localStorage.setItem('user', JSON.stringify(data.data.user))
+        localStorage.setItem('isLoggedIn', 'true')
+        
+        if (rememberMe) {
+          localStorage.setItem('rememberMe', 'true')
+        }
 
         toast({
           title: "Succesvol ingelogd!",
-          description: `Welkom terug${user ? ` als ${user.role}` : ""}`,
+          description: `Welkom terug, ${data.data.user.naam}`,
         })
 
         // Redirect to dashboard
-        window.location.href = "/"
+        router.push("/")
       } else {
         toast({
           title: "Login mislukt",
-          description: "Controleer je email en wachtwoord",
+          description: data.message || "Controleer je email en wachtwoord",
           variant: "destructive",
         })
       }
+    } catch (error) {
+      console.error('Login error:', error)
+      toast({
+        title: "Verbindingsfout",
+        description: "Er ging iets mis bij het inloggen. Probeer het opnieuw.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
-  const handleDemoLogin = (role: string) => {
+  const handleDemoLogin = async (email: string, password: string, role: string) => {
+    setLoginData({ email, wachtwoord: password })
     setIsLoading(true)
-    setTimeout(() => {
-      // Set authentication in localStorage
-      localStorage.setItem("isLoggedIn", "true")
-      localStorage.setItem("userRole", role)
-      localStorage.setItem("userEmail", `demo-${role.toLowerCase()}@rijschool.nl`)
-
-      toast({
-        title: `Demo login als ${role}`,
-        description: "Je bent ingelogd met demo gegevens",
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, wachtwoord: password }),
       })
 
-      // Redirect to dashboard
-      window.location.href = "/"
+      const data = await response.json()
+
+      if (data.success) {
+        localStorage.setItem('token', data.data.token)
+        localStorage.setItem('user', JSON.stringify(data.data.user))
+        localStorage.setItem('isLoggedIn', 'true')
+
+        toast({
+          title: `Demo login als ${role}`,
+          description: "Je bent ingelogd met demo gegevens",
+        })
+
+        router.push("/")
+      } else {
+        toast({
+          title: "Demo login mislukt",
+          description: data.message,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Verbindingsfout",
+        description: "Er ging iets mis bij de demo login.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -180,7 +214,7 @@ export default function LoginPage() {
               <CardDescription>Log in op je rijschool account om verder te gaan</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email adres</Label>
                   <div className="relative">
@@ -205,8 +239,8 @@ export default function LoginPage() {
                       id="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                      value={loginData.wachtwoord}
+                      onChange={(e) => setLoginData({ ...loginData, wachtwoord: e.target.value })}
                       className="pl-10 pr-10 bg-white/50"
                       required
                     />
@@ -239,13 +273,13 @@ export default function LoginPage() {
                 </div>
 
                 <Button
-                  type="submit"
+                  onClick={handleLogin}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   disabled={isLoading}
                 >
                   {isLoading ? "Bezig met inloggen..." : "Inloggen"}
                 </Button>
-              </form>
+              </div>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -259,16 +293,16 @@ export default function LoginPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => handleDemoLogin("Eigenaar")}
+                  onClick={() => handleDemoLogin("admin@rijschool.nl", "admin123", "Admin")}
                   disabled={isLoading}
                   className="bg-white/50"
                 >
                   <Users className="h-4 w-4 mr-2" />
-                  Eigenaar
+                  Admin
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => handleDemoLogin("Instructeur")}
+                  onClick={() => handleDemoLogin("instructeur@rijschool.nl", "instructeur123", "Instructeur")}
                   disabled={isLoading}
                   className="bg-white/50"
                 >

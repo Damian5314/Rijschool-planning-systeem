@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,13 +10,86 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Building, Clock, Bell, Database, Save, Download, Upload } from "lucide-react"
-import { rijschoolSettings } from "@/lib/data"
-import { toast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
+
+interface OpeningsTijden {
+  [key: string]: {
+    open: string
+    dicht: string
+    gesloten: boolean
+  }
+}
+
+interface RijschoolSettings {
+  rijschoolNaam: string
+  kvkNummer: string
+  adres: string
+  postcode: string
+  plaats: string
+  telefoon: string
+  email: string
+  website: string
+  lesDuur: number
+  examenDuur: number
+  pauzeMinuten: number
+  openingstijden: OpeningsTijden
+  prijsAutomaat: number
+  prijsSchakel: number
+  prijsExamen: number
+  emailNotificaties: boolean
+  smsNotificaties: boolean
+  herinneringVoorExamen: number
+  herinneringVoorLes: number
+  automatischeBackup: boolean
+  backupTijd: string
+  dataRetentie: number
+}
 
 export default function Instellingen() {
-  const [settings, setSettings] = useState(rijschoolSettings)
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [settings, setSettings] = useState<RijschoolSettings>({
+    rijschoolNaam: "Rijschool De Veilige Weg",
+    kvkNummer: "12345678",
+    adres: "Hoofdstraat 123",
+    postcode: "1234 AB",
+    plaats: "Amsterdam",
+    telefoon: "020-1234567",
+    email: "info@rijschool.nl",
+    website: "www.rijschool.nl",
+    lesDuur: 60,
+    examenDuur: 90,
+    pauzeMinuten: 15,
+    openingstijden: {
+      maandag: { open: "08:00", dicht: "18:00", gesloten: false },
+      dinsdag: { open: "08:00", dicht: "18:00", gesloten: false },
+      woensdag: { open: "08:00", dicht: "18:00", gesloten: false },
+      donderdag: { open: "08:00", dicht: "18:00", gesloten: false },
+      vrijdag: { open: "08:00", dicht: "18:00", gesloten: false },
+      zaterdag: { open: "09:00", dicht: "17:00", gesloten: false },
+      zondag: { open: "09:00", dicht: "17:00", gesloten: true },
+    },
+    prijsAutomaat: 48,
+    prijsSchakel: 45,
+    prijsExamen: 120,
+    emailNotificaties: true,
+    smsNotificaties: false,
+    herinneringVoorExamen: 24,
+    herinneringVoorLes: 2,
+    automatischeBackup: true,
+    backupTijd: "02:00",
+    dataRetentie: 365,
+  })
+
+  useEffect(() => {
+    // Simuleer laden van instellingen
+    setTimeout(() => {
+      setLoading(false)
+    }, 1000)
+  }, [])
 
   const handleSave = () => {
+    // Hier zou je de instellingen opslaan naar de backend
     toast({
       title: "Instellingen opgeslagen",
       description: "Alle instellingen zijn succesvol opgeslagen.",
@@ -25,6 +98,17 @@ export default function Instellingen() {
   }
 
   const handleExport = () => {
+    // Mock export functionaliteit
+    const dataStr = JSON.stringify(settings, null, 2)
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
+    
+    const exportFileDefaultName = `rijschool-instellingen-${new Date().toISOString().split('T')[0]}.json`
+    
+    const linkElement = document.createElement('a')
+    linkElement.setAttribute('href', dataUri)
+    linkElement.setAttribute('download', exportFileDefaultName)
+    linkElement.click()
+    
     toast({
       title: "Export gestart",
       description: "Instellingen worden geëxporteerd...",
@@ -55,16 +139,33 @@ export default function Instellingen() {
     { key: "zondag", label: "Zondag" },
   ]
 
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid gap-6">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-64 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Instellingen</h2>
+        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          Instellingen
+        </h2>
         <div className="flex items-center space-x-2">
           <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Exporteren
           </Button>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
             <Save className="mr-2 h-4 w-4" />
             Opslaan
           </Button>
@@ -73,10 +174,10 @@ export default function Instellingen() {
 
       <div className="grid gap-6">
         {/* Rijschool Informatie */}
-        <Card>
+        <Card className="card-hover glass-effect">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <Building className="h-5 w-5" />
+              <Building className="h-5 w-5 text-blue-600" />
               <CardTitle>Rijschool Informatie</CardTitle>
             </div>
             <CardDescription>Algemene informatie over {settings.rijschoolNaam}</CardDescription>
@@ -89,6 +190,7 @@ export default function Instellingen() {
                   id="rijschoolNaam"
                   value={settings.rijschoolNaam}
                   onChange={(e) => setSettings({ ...settings, rijschoolNaam: e.target.value })}
+                  className="bg-white/50"
                 />
               </div>
               <div className="space-y-2">
@@ -97,6 +199,7 @@ export default function Instellingen() {
                   id="kvkNummer"
                   value={settings.kvkNummer}
                   onChange={(e) => setSettings({ ...settings, kvkNummer: e.target.value })}
+                  className="bg-white/50"
                 />
               </div>
             </div>
@@ -107,6 +210,7 @@ export default function Instellingen() {
                 id="adres"
                 value={settings.adres}
                 onChange={(e) => setSettings({ ...settings, adres: e.target.value })}
+                className="bg-white/50"
               />
             </div>
 
@@ -117,6 +221,7 @@ export default function Instellingen() {
                   id="postcode"
                   value={settings.postcode}
                   onChange={(e) => setSettings({ ...settings, postcode: e.target.value })}
+                  className="bg-white/50"
                 />
               </div>
               <div className="space-y-2">
@@ -125,6 +230,7 @@ export default function Instellingen() {
                   id="plaats"
                   value={settings.plaats}
                   onChange={(e) => setSettings({ ...settings, plaats: e.target.value })}
+                  className="bg-white/50"
                 />
               </div>
             </div>
@@ -136,6 +242,7 @@ export default function Instellingen() {
                   id="telefoon"
                   value={settings.telefoon}
                   onChange={(e) => setSettings({ ...settings, telefoon: e.target.value })}
+                  className="bg-white/50"
                 />
               </div>
               <div className="space-y-2">
@@ -145,6 +252,7 @@ export default function Instellingen() {
                   type="email"
                   value={settings.email}
                   onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                  className="bg-white/50"
                 />
               </div>
             </div>
@@ -155,16 +263,17 @@ export default function Instellingen() {
                 id="website"
                 value={settings.website}
                 onChange={(e) => setSettings({ ...settings, website: e.target.value })}
+                className="bg-white/50"
               />
             </div>
           </CardContent>
         </Card>
 
         {/* Planning Instellingen */}
-        <Card>
+        <Card className="card-hover glass-effect">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="h-5 w-5 text-green-600" />
               <CardTitle>Planning Instellingen</CardTitle>
             </div>
             <CardDescription>Configureer openingstijden en lesduur</CardDescription>
@@ -178,6 +287,7 @@ export default function Instellingen() {
                   type="number"
                   value={settings.lesDuur}
                   onChange={(e) => setSettings({ ...settings, lesDuur: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
                 />
               </div>
               <div className="space-y-2">
@@ -187,6 +297,7 @@ export default function Instellingen() {
                   type="number"
                   value={settings.examenDuur}
                   onChange={(e) => setSettings({ ...settings, examenDuur: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
                 />
               </div>
               <div className="space-y-2">
@@ -196,6 +307,7 @@ export default function Instellingen() {
                   type="number"
                   value={settings.pauzeMinuten}
                   onChange={(e) => setSettings({ ...settings, pauzeMinuten: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
                 />
               </div>
             </div>
@@ -208,60 +320,60 @@ export default function Instellingen() {
                 <div key={dag.key} className="flex items-center space-x-4">
                   <div className="w-20 text-sm font-medium">{dag.label}</div>
                   <Switch
-                    checked={!settings.openingstijden[dag.key as keyof typeof settings.openingstijden].gesloten}
+                    checked={!settings.openingstijden[dag.key].gesloten}
                     onCheckedChange={(checked) => {
                       setSettings({
                         ...settings,
                         openingstijden: {
                           ...settings.openingstijden,
                           [dag.key]: {
-                            ...settings.openingstijden[dag.key as keyof typeof settings.openingstijden],
+                            ...settings.openingstijden[dag.key],
                             gesloten: !checked,
                           },
                         },
                       })
                     }}
                   />
-                  {!settings.openingstijden[dag.key as keyof typeof settings.openingstijden].gesloten && (
+                  {!settings.openingstijden[dag.key].gesloten && (
                     <>
                       <Input
                         type="time"
-                        value={settings.openingstijden[dag.key as keyof typeof settings.openingstijden].open}
+                        value={settings.openingstijden[dag.key].open}
                         onChange={(e) => {
                           setSettings({
                             ...settings,
                             openingstijden: {
                               ...settings.openingstijden,
                               [dag.key]: {
-                                ...settings.openingstijden[dag.key as keyof typeof settings.openingstijden],
+                                ...settings.openingstijden[dag.key],
                                 open: e.target.value,
                               },
                             },
                           })
                         }}
-                        className="w-24"
+                        className="w-24 bg-white/50"
                       />
                       <span className="text-sm text-muted-foreground">tot</span>
                       <Input
                         type="time"
-                        value={settings.openingstijden[dag.key as keyof typeof settings.openingstijden].dicht}
+                        value={settings.openingstijden[dag.key].dicht}
                         onChange={(e) => {
                           setSettings({
                             ...settings,
                             openingstijden: {
                               ...settings.openingstijden,
                               [dag.key]: {
-                                ...settings.openingstijden[dag.key as keyof typeof settings.openingstijden],
+                                ...settings.openingstijden[dag.key],
                                 dicht: e.target.value,
                               },
                             },
                           })
                         }}
-                        className="w-24"
+                        className="w-24 bg-white/50"
                       />
                     </>
                   )}
-                  {settings.openingstijden[dag.key as keyof typeof settings.openingstijden].gesloten && (
+                  {settings.openingstijden[dag.key].gesloten && (
                     <Badge variant="secondary">Gesloten</Badge>
                   )}
                 </div>
@@ -271,10 +383,10 @@ export default function Instellingen() {
         </Card>
 
         {/* Prijzen */}
-        <Card>
+        <Card className="card-hover glass-effect">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <Badge className="h-5 w-5" />
+              <Badge className="h-5 w-5 text-yellow-600" />
               <CardTitle>Prijzen</CardTitle>
             </div>
             <CardDescription>Stel de prijzen in voor lessen en examens</CardDescription>
@@ -288,6 +400,7 @@ export default function Instellingen() {
                   type="number"
                   value={settings.prijsAutomaat}
                   onChange={(e) => setSettings({ ...settings, prijsAutomaat: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
                 />
               </div>
               <div className="space-y-2">
@@ -297,6 +410,7 @@ export default function Instellingen() {
                   type="number"
                   value={settings.prijsSchakel}
                   onChange={(e) => setSettings({ ...settings, prijsSchakel: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
                 />
               </div>
               <div className="space-y-2">
@@ -306,6 +420,7 @@ export default function Instellingen() {
                   type="number"
                   value={settings.prijsExamen}
                   onChange={(e) => setSettings({ ...settings, prijsExamen: Number.parseInt(e.target.value) })}
+                  className="bg-white/50"
                 />
               </div>
             </div>
@@ -313,10 +428,10 @@ export default function Instellingen() {
         </Card>
 
         {/* Notificaties */}
-        <Card>
+        <Card className="card-hover glass-effect">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <Bell className="h-5 w-5" />
+              <Bell className="h-5 w-5 text-purple-600" />
               <CardTitle>Notificatie Instellingen</CardTitle>
             </div>
             <CardDescription>Configureer automatische herinneringen</CardDescription>
@@ -353,7 +468,7 @@ export default function Instellingen() {
                   value={settings.herinneringVoorExamen.toString()}
                   onValueChange={(value) => setSettings({ ...settings, herinneringVoorExamen: Number.parseInt(value) })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -371,7 +486,7 @@ export default function Instellingen() {
                   value={settings.herinneringVoorLes.toString()}
                   onValueChange={(value) => setSettings({ ...settings, herinneringVoorLes: Number.parseInt(value) })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -387,10 +502,10 @@ export default function Instellingen() {
         </Card>
 
         {/* Systeem Instellingen  */}
-        <Card>
+        <Card className="card-hover glass-effect">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <Database className="h-5 w-5" />
+              <Database className="h-5 w-5 text-indigo-600" />
               <CardTitle>Systeem Instellingen</CardTitle>
             </div>
             <CardDescription>Backup en data beheer instellingen</CardDescription>
@@ -415,7 +530,7 @@ export default function Instellingen() {
                   type="time"
                   value={settings.backupTijd}
                   onChange={(e) => setSettings({ ...settings, backupTijd: e.target.value })}
-                  className="w-32"
+                  className="w-32 bg-white/50"
                 />
               </div>
             )}
@@ -427,7 +542,7 @@ export default function Instellingen() {
                 type="number"
                 value={settings.dataRetentie}
                 onChange={(e) => setSettings({ ...settings, dataRetentie: Number.parseInt(e.target.value) })}
-                className="w-32"
+                className="w-32 bg-white/50"
               />
               <p className="text-sm text-muted-foreground">
                 Hoe lang data bewaard wordt voordat het automatisch wordt verwijderd
@@ -437,11 +552,11 @@ export default function Instellingen() {
             <Separator />
 
             <div className="flex items-center space-x-2">
-              <Button variant="outline" onClick={handleImportBackup}>
+              <Button variant="outline" onClick={handleImportBackup} className="bg-white/50">
                 <Upload className="mr-2 h-4 w-4" />
                 Backup Importeren
               </Button>
-              <Button variant="outline" onClick={handleDownloadBackup}>
+              <Button variant="outline" onClick={handleDownloadBackup} className="bg-white/50">
                 <Download className="mr-2 h-4 w-4" />
                 Backup Downloaden
               </Button>

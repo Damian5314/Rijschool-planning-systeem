@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,13 +22,43 @@ import { Plus, Search, Edit, Trash2, Phone, Mail, MapPin, Eye, Euro } from "luci
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 
+interface Leerling {
+  id: number
+  naam: string
+  email: string
+  telefoon: string
+  transmissie: string
+  status: string
+  lessen: number
+  instructeur: string
+  startdatum: string
+  adres: string
+  postcode: string
+  plaats: string
+  tegoed: number
+}
+
+interface NewLeerling {
+  naam: string
+  email: string
+  telefoon: string
+  transmissie: string
+  instructeur: string
+  adres: string
+  postcode: string
+  plaats: string
+  geboortedatum: string
+  opmerkingen: string
+}
+
 export default function Leerlingen() {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isAdresDialogOpen, setIsAdresDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  const [newLeerling, setNewLeerling] = useState({
+  const [newLeerling, setNewLeerling] = useState<NewLeerling>({
     naam: "",
     email: "",
     telefoon: "",
@@ -41,68 +71,76 @@ export default function Leerlingen() {
     opmerkingen: "",
   })
 
-  const [leerlingen, setLeerlingen] = useState([
-    {
-      id: 1,
-      naam: "Emma van der Berg",
-      email: "emma@email.com",
-      telefoon: "06-12345678",
-      transmissie: "Automaat",
-      status: "Actief",
-      lessen: 15,
-      instructeur: "Jan Bakker",
-      startdatum: "2024-01-15",
-      adres: "Hoofdstraat 123",
-      postcode: "1234 AB",
-      plaats: "Amsterdam",
-      tegoed: 150.0,
-    },
-    {
-      id: 2,
-      naam: "Tom Jansen",
-      email: "tom@email.com",
-      telefoon: "06-87654321",
-      transmissie: "Schakel",
-      status: "Examen",
-      lessen: 28,
-      instructeur: "Lisa de Vries",
-      startdatum: "2023-11-20",
-      adres: "Kerkstraat 45",
-      postcode: "5678 CD",
-      plaats: "Rotterdam",
-      tegoed: 75.5,
-    },
-    {
-      id: 3,
-      naam: "Sophie Willems",
-      email: "sophie@email.com",
-      telefoon: "06-11223344",
-      transmissie: "Automaat",
-      status: "Actief",
-      lessen: 8,
-      instructeur: "Mark Peters",
-      startdatum: "2024-02-10",
-      adres: "Dorpsstraat 67",
-      postcode: "9012 EF",
-      plaats: "Utrecht",
-      tegoed: 200.0,
-    },
-    {
-      id: 4,
-      naam: "David Smit",
-      email: "david@email.com",
-      telefoon: "06-55667788",
-      transmissie: "Schakel",
-      status: "Geslaagd",
-      lessen: 35,
-      instructeur: "Jan Bakker",
-      startdatum: "2023-09-05",
-      adres: "Schoolstraat 89",
-      postcode: "3456 GH",
-      plaats: "Den Haag",
-      tegoed: 0.0,
-    },
-  ])
+  const [leerlingen, setLeerlingen] = useState<Leerling[]>([])
+
+  // Mock data laden
+  useEffect(() => {
+    const mockLeerlingen: Leerling[] = [
+      {
+        id: 1,
+        naam: "Emma van der Berg",
+        email: "emma@email.com",
+        telefoon: "06-12345678",
+        transmissie: "Automaat",
+        status: "Actief",
+        lessen: 15,
+        instructeur: "Jan Bakker",
+        startdatum: "2024-01-15",
+        adres: "Hoofdstraat 123",
+        postcode: "1234 AB",
+        plaats: "Amsterdam",
+        tegoed: 150.0,
+      },
+      {
+        id: 2,
+        naam: "Tom Jansen",
+        email: "tom@email.com",
+        telefoon: "06-87654321",
+        transmissie: "Schakel",
+        status: "Examen",
+        lessen: 28,
+        instructeur: "Lisa de Vries",
+        startdatum: "2023-11-20",
+        adres: "Kerkstraat 45",
+        postcode: "5678 CD",
+        plaats: "Rotterdam",
+        tegoed: 75.5,
+      },
+      {
+        id: 3,
+        naam: "Sophie Willems",
+        email: "sophie@email.com",
+        telefoon: "06-11223344",
+        transmissie: "Automaat",
+        status: "Actief",
+        lessen: 8,
+        instructeur: "Mark Peters",
+        startdatum: "2024-02-10",
+        adres: "Dorpsstraat 67",
+        postcode: "9012 EF",
+        plaats: "Utrecht",
+        tegoed: 200.0,
+      },
+      {
+        id: 4,
+        naam: "David Smit",
+        email: "david@email.com",
+        telefoon: "06-55667788",
+        transmissie: "Schakel",
+        status: "Geslaagd",
+        lessen: 35,
+        instructeur: "Jan Bakker",
+        startdatum: "2023-09-05",
+        adres: "Schoolstraat 89",
+        postcode: "3456 GH",
+        plaats: "Den Haag",
+        tegoed: 0.0,
+      },
+    ]
+    
+    setLeerlingen(mockLeerlingen)
+    setLoading(false)
+  }, [])
 
   const filteredLeerlingen = leerlingen.filter(
     (leerling) =>
@@ -128,9 +166,16 @@ export default function Leerlingen() {
 
   const addLeerling = () => {
     if (newLeerling.naam && newLeerling.email && newLeerling.telefoon) {
-      const leerling = {
+      const leerling: Leerling = {
         id: leerlingen.length + 1,
-        ...newLeerling,
+        naam: newLeerling.naam,
+        email: newLeerling.email,
+        telefoon: newLeerling.telefoon,
+        transmissie: newLeerling.transmissie,
+        instructeur: newLeerling.instructeur,
+        adres: newLeerling.adres,
+        postcode: newLeerling.postcode,
+        plaats: newLeerling.plaats,
         status: "Nieuw",
         lessen: 0,
         startdatum: new Date().toISOString().split("T")[0],
@@ -154,6 +199,12 @@ export default function Leerlingen() {
         title: "Leerling toegevoegd",
         description: `${newLeerling.naam} is succesvol toegevoegd.`,
       })
+    } else {
+      toast({
+        title: "Validatiefout",
+        description: "Vul alle verplichte velden in",
+        variant: "destructive",
+      })
     }
   }
 
@@ -174,7 +225,7 @@ export default function Leerlingen() {
     { adres: "Schoolstraat 89", postcode: "3456 GH", plaats: "Den Haag" },
   ]
 
-  const selectAdres = (adres: any) => {
+  const selectAdres = (adres: typeof adresSuggesties[0]) => {
     setNewLeerling({
       ...newLeerling,
       adres: adres.adres,
@@ -182,6 +233,17 @@ export default function Leerlingen() {
       plaats: adres.plaats,
     })
     setIsAdresDialogOpen(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-96 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -1,136 +1,228 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import {
-  Calendar,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Home,
   Users,
+  Calendar,
   Car,
-  GraduationCap,
+  Award,
+  FileText,
   BarChart3,
   Settings,
-  Menu,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Receipt,
+  LogOut,
+  User,
+  ChevronDown,
+  Building,
 } from "lucide-react"
-import { LogoutButton } from "./logout-button"
-
-const navigation = [
-  { name: "Dashboard", href: "/", icon: BarChart3 },
-  { name: "Planning", href: "/planning", icon: Calendar },
-  { name: "Leerlingen", href: "/leerlingen", icon: Users },
-  { name: "Instructeurs", href: "/instructeurs", icon: GraduationCap },
-  { name: "Voertuigen", href: "/voertuigen", icon: Car },
-  { name: "Examens", href: "/examens", icon: FileText },
-  { name: "Facturatie", href: "/facturatie", icon: Receipt },
-  { name: "Statistieken", href: "/statistieken", icon: BarChart3 },
-  { name: "Instellingen", href: "/instellingen", icon: Settings },
-]
+import { useToast } from "@/hooks/use-toast"
 
 export function Sidebar() {
   const pathname = usePathname()
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
+  const [userInfo, setUserInfo] = useState({
+    name: "Leon Wilson",
+    email: "leon@rijschool.nl",
+    role: "Eigenaar",
+    rijschool: "Rijschool De Veilige Weg"
+  })
+
+  useEffect(() => {
+    // Get user info from localStorage
+    const email = localStorage.getItem("userEmail")
+    const role = localStorage.getItem("userRole")
+    
+    if (email) {
+      setUserInfo(prev => ({
+        ...prev,
+        email,
+        role: role || "Gebruiker"
+      }))
+    }
+  }, [])
+
+  const navigation = [
+    {
+      name: "Dashboard",
+      href: "/",
+      icon: Home,
+      current: pathname === "/",
+    },
+    {
+      name: "Planning",
+      href: "/planning",
+      icon: Calendar,
+      current: pathname === "/planning",
+    },
+    {
+      name: "Leerlingen",
+      href: "/leerlingen",
+      icon: Users,
+      current: pathname.startsWith("/leerlingen"),
+    },
+    {
+      name: "Instructeurs",
+      href: "/instructeurs",
+      icon: User,
+      current: pathname.startsWith("/instructeurs"),
+    },
+    {
+      name: "Voertuigen",
+      href: "/voertuigen",
+      icon: Car,
+      current: pathname.startsWith("/voertuigen"),
+    },
+    {
+      name: "Examens",
+      href: "/examens",
+      icon: Award,
+      current: pathname.startsWith("/examens"),
+    },
+    {
+      name: "Facturatie",
+      href: "/facturatie",
+      icon: FileText,
+      current: pathname.startsWith("/facturatie"),
+    },
+    {
+      name: "Statistieken",
+      href: "/statistieken",
+      icon: BarChart3,
+      current: pathname.startsWith("/statistieken"),
+    },
+    {
+      name: "Instellingen",
+      href: "/instellingen",
+      icon: Settings,
+      current: pathname.startsWith("/instellingen"),
+    },
+  ]
+
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn")
+    localStorage.removeItem("userRole")
+    localStorage.removeItem("userEmail")
+    
+    toast({
+      title: "Uitgelogd",
+      description: "Je bent succesvol uitgelogd.",
+    })
+    
+    router.push("/login")
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+  }
 
   return (
-    <>
-      {/* Mobile menu button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="fixed top-4 left-4 z-50 md:hidden"
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-      >
-        {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
-
-      {/* Mobile overlay */}
-      {isMobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setIsMobileOpen(false)} />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={cn(
-          "fixed left-0 top-0 z-40 h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 ease-in-out md:relative md:z-auto",
-          isCollapsed ? "w-16" : "w-64",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-        )}
-      >
-        <div className="flex h-full flex-col">
-          {/* Header */}
-          <div className="flex h-16 items-center justify-between px-4 border-b border-slate-700">
-            {!isCollapsed && (
-              <div className="flex items-center space-x-2">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <Car className="h-4 w-4 text-white" />
-                </div>
-                <span className="font-bold text-lg bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  Willes-Rijschool
-                </span>
-              </div>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hidden md:flex text-slate-400 hover:text-white hover:bg-slate-700"
-            >
-              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </Button>
+    <div className="flex h-full w-64 flex-col bg-white border-r border-gray-200 shadow-sm">
+      {/* Logo */}
+      <div className="flex h-16 items-center px-6 border-b border-gray-200">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <Building className="h-5 w-5 text-white" />
           </div>
-
-          {/* Navigation */}
-          <ScrollArea className="flex-1 px-3 py-4">
-            <nav className="space-y-2">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={cn(
-                      "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-slate-700/50 hover:text-white group",
-                      isActive
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg"
-                        : "text-slate-300 hover:text-white",
-                    )}
-                  >
-                    <item.icon
-                      className={cn(
-                        "h-5 w-5 transition-colors",
-                        isActive ? "text-white" : "text-slate-400 group-hover:text-white",
-                      )}
-                    />
-                    {!isCollapsed && <span className="ml-3">{item.name}</span>}
-                  </Link>
-                )
-              })}
-            </nav>
-          </ScrollArea>
-
-          {/* Footer */}
-          <div className="border-t border-slate-700 p-4">
-            <div className="space-y-2">
-              {!isCollapsed && (
-                <div className="text-xs text-slate-400 mb-2">
-                  <div>Willes-Rijschool</div>
-                  <div>Versie 1.0.0</div>
-                </div>
-              )}
-              <LogoutButton collapsed={isCollapsed} />
-            </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Willes-Rijschool</h1>
           </div>
         </div>
       </div>
-    </>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {navigation.map((item) => {
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                item.current
+                  ? "bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-r-2 border-blue-600"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+              }`}
+            >
+              <Icon
+                className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${
+                  item.current ? "text-blue-600" : "text-gray-400 group-hover:text-gray-500"
+                }`}
+              />
+              {item.name}
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* User Profile */}
+      <div className="border-t border-gray-200 p-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-start h-auto p-3 hover:bg-gray-50"
+            >
+              <div className="flex items-center space-x-3 w-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm">
+                    {getInitials(userInfo.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {userInfo.name}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {userInfo.role}
+                  </div>
+                </div>
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium">{userInfo.name}</p>
+                <p className="text-xs text-gray-500">{userInfo.email}</p>
+                <Badge variant="secondary" className="w-fit text-xs">
+                  {userInfo.role}
+                </Badge>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/instellingen" className="flex items-center">
+                <Settings className="h-4 w-4 mr-2" />
+                Instellingen
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+              <LogOut className="h-4 w-4 mr-2" />
+              Uitloggen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   )
 }

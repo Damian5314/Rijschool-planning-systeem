@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -61,6 +59,15 @@ export default function RegisterPage() {
       toast({
         title: "Wachtwoorden komen niet overeen",
         description: "Controleer je wachtwoord en probeer opnieuw",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (registerData.password.length < 6) {
+      toast({
+        title: "Wachtwoord te kort",
+        description: "Het wachtwoord moet minimaal 6 karakters bevatten",
         variant: "destructive",
       })
       return

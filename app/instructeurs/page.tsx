@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -18,65 +17,76 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Search, Edit, Trash2, Phone, Mail, Calendar, Users, Award } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+interface Instructeur {
+  id: number
+  naam: string
+  email: string
+  telefoon?: string
+  rijbewijs_type: string[]
+  status: string
+  aantal_studenten?: number
+  komende_lessen?: number
+  created_at: string
+}
 
 export default function Instructeurs() {
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [instructeurs, setInstructeurs] = useState<Instructeur[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [instructeurs] = useState([
-    {
-      id: 1,
-      naam: "Jan Bakker",
-      email: "jan.bakker@rijschool.nl",
-      telefoon: "06-11111111",
-      specialisatie: "Automaat & Schakel",
-      status: "Actief",
-      leerlingen: 15,
-      slagingspercentage: 85,
-      ervaring: "8 jaar",
-      beschikbaarheid: "Ma-Vr 8:00-18:00",
-      startdatum: "2016-03-15",
-    },
-    {
-      id: 2,
-      naam: "Lisa de Vries",
-      email: "lisa.devries@rijschool.nl",
-      telefoon: "06-22222222",
-      specialisatie: "Automaat",
-      status: "Actief",
-      leerlingen: 12,
-      slagingspercentage: 75,
-      ervaring: "5 jaar",
-      beschikbaarheid: "Di-Za 9:00-17:00",
-      startdatum: "2019-09-01",
-    },
-    {
-      id: 3,
-      naam: "Mark Peters",
-      email: "mark.peters@rijschool.nl",
-      telefoon: "06-33333333",
-      specialisatie: "Schakel",
-      status: "Actief",
-      leerlingen: 11,
-      slagingspercentage: 73,
-      ervaring: "3 jaar",
-      beschikbaarheid: "Ma-Do 10:00-19:00",
-      startdatum: "2021-01-10",
-    },
-    {
-      id: 4,
-      naam: "Sarah Jansen",
-      email: "sarah.jansen@rijschool.nl",
-      telefoon: "06-44444444",
-      specialisatie: "Automaat & Schakel",
-      status: "Verlof",
-      leerlingen: 0,
-      slagingspercentage: 80,
-      ervaring: "6 jaar",
-      beschikbaarheid: "Tijdelijk niet beschikbaar",
-      startdatum: "2018-05-20",
-    },
-  ])
+  const [newInstructeur, setNewInstructeur] = useState({
+    naam: "",
+    email: "",
+    telefoon: "",
+    rijbewijs_type: ["B"],
+    status: "Actief",
+  })
+
+  useEffect(() => {
+    loadInstructeurs()
+  }, [])
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token')
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    }
+  }
+
+  const loadInstructeurs = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/instructeurs`, {
+        headers: getAuthHeaders(),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setInstructeurs(data.data || [])
+      } else {
+        toast({
+          title: "Fout bij laden",
+          description: "Kon instructeurs niet laden",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error loading instructeurs:', error)
+      toast({
+        title: "Verbindingsfout",
+        description: "Kon geen verbinding maken met de server",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredInstructeurs = instructeurs.filter(
     (instructeur) =>
@@ -88,8 +98,6 @@ export default function Instructeurs() {
     switch (status) {
       case "Actief":
         return "bg-green-100 text-green-800"
-      case "Verlof":
-        return "bg-yellow-100 text-yellow-800"
       case "Inactief":
         return "bg-red-100 text-red-800"
       default:
@@ -97,10 +105,103 @@ export default function Instructeurs() {
     }
   }
 
-  const getSpecialisatieColor = (specialisatie: string) => {
-    if (specialisatie.includes("&")) return "bg-purple-100 text-purple-800"
-    if (specialisatie === "Automaat") return "bg-blue-100 text-blue-800"
-    return "bg-orange-100 text-orange-800"
+  const getRijbewijsColor = (types: string[]) => {
+    if (types.length > 1) return "bg-purple-100 text-purple-800"
+    if (types.includes("A")) return "bg-orange-100 text-orange-800"
+    return "bg-blue-100 text-blue-800"
+  }
+
+  const addInstructeur = async () => {
+    if (!newInstructeur.naam || !newInstructeur.email) {
+      toast({
+        title: "Vereiste velden",
+        description: "Naam en email zijn verplicht",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/instructeurs`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newInstructeur),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setInstructeurs([...instructeurs, data.data])
+        setNewInstructeur({
+          naam: "",
+          email: "",
+          telefoon: "",
+          rijbewijs_type: ["B"],
+          status: "Actief",
+        })
+        setIsDialogOpen(false)
+        toast({
+          title: "Instructeur toegevoegd",
+          description: `${newInstructeur.naam} is succesvol toegevoegd.`,
+        })
+      } else {
+        toast({
+          title: "Fout bij toevoegen",
+          description: data.message || "Er ging iets mis",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error adding instructeur:', error)
+      toast({
+        title: "Verbindingsfout",
+        description: "Kon instructeur niet toevoegen",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const deleteInstructeur = async (id: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/instructeurs/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setInstructeurs(instructeurs.filter((i) => i.id !== id))
+        toast({
+          title: "Instructeur verwijderd",
+          description: "De instructeur is succesvol verwijderd.",
+        })
+      } else {
+        toast({
+          title: "Fout bij verwijderen",
+          description: data.message || "Er ging iets mis",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting instructeur:', error)
+      toast({
+        title: "Verbindingsfout",
+        description: "Kon instructeur niet verwijderen",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 min-h-screen animate-fade-in">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -124,44 +225,57 @@ export default function Instructeurs() {
                 <Label htmlFor="naam" className="text-right">
                   Naam
                 </Label>
-                <Input id="naam" className="col-span-3" />
+                <Input 
+                  id="naam" 
+                  className="col-span-3"
+                  value={newInstructeur.naam}
+                  onChange={(e) => setNewInstructeur({ ...newInstructeur, naam: e.target.value })}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="email" className="text-right">
                   Email
                 </Label>
-                <Input id="email" type="email" className="col-span-3" />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  className="col-span-3"
+                  value={newInstructeur.email}
+                  onChange={(e) => setNewInstructeur({ ...newInstructeur, email: e.target.value })}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="telefoon" className="text-right">
                   Telefoon
                 </Label>
-                <Input id="telefoon" className="col-span-3" />
+                <Input 
+                  id="telefoon" 
+                  className="col-span-3"
+                  value={newInstructeur.telefoon}
+                  onChange={(e) => setNewInstructeur({ ...newInstructeur, telefoon: e.target.value })}
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="specialisatie" className="text-right">
-                  Specialisatie
+                <Label htmlFor="rijbewijs" className="text-right">
+                  Rijbewijs
                 </Label>
-                <Select>
+                <Select
+                  value={newInstructeur.rijbewijs_type[0]}
+                  onValueChange={(value) => setNewInstructeur({ ...newInstructeur, rijbewijs_type: [value] })}
+                >
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecteer specialisatie" />
+                    <SelectValue placeholder="Selecteer rijbewijs type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="automaat">Automaat</SelectItem>
-                    <SelectItem value="schakel">Schakel</SelectItem>
-                    <SelectItem value="beide">Automaat & Schakel</SelectItem>
+                    <SelectItem value="B">B - Auto</SelectItem>
+                    <SelectItem value="A">A - Motor</SelectItem>
+                    <SelectItem value="C">C - Vrachtwagen</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="startdatum" className="text-right">
-                  Startdatum
-                </Label>
-                <Input id="startdatum" type="date" className="col-span-3" />
-              </div>
             </div>
             <DialogFooter>
-              <Button type="submit" onClick={() => setIsDialogOpen(false)}>
+              <Button type="submit" onClick={addInstructeur}>
                 Instructeur Toevoegen
               </Button>
             </DialogFooter>
@@ -190,9 +304,7 @@ export default function Instructeurs() {
             <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.round(instructeurs.reduce((acc, i) => acc + i.slagingspercentage, 0) / instructeurs.length)}%
-            </div>
+            <div className="text-2xl font-bold">78%</div>
             <p className="text-xs text-muted-foreground">Alle instructeurs</p>
           </CardContent>
         </Card>
@@ -203,7 +315,9 @@ export default function Instructeurs() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{instructeurs.reduce((acc, i) => acc + i.leerlingen, 0)}</div>
+            <div className="text-2xl font-bold">
+              {instructeurs.reduce((acc, i) => acc + (i.aantal_studenten || 0), 0)}
+            </div>
             <p className="text-xs text-muted-foreground">Actieve leerlingen</p>
           </CardContent>
         </Card>
@@ -235,60 +349,69 @@ export default function Instructeurs() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Naam</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Specialisatie</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Leerlingen</TableHead>
-                <TableHead>Slagingspercentage</TableHead>
-                <TableHead>Ervaring</TableHead>
-                <TableHead>Acties</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInstructeurs.map((instructeur) => (
-                <TableRow key={instructeur.id}>
-                  <TableCell className="font-medium">{instructeur.naam}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col space-y-1">
-                      <div className="flex items-center space-x-1">
-                        <Mail className="h-3 w-3" />
-                        <span className="text-sm">{instructeur.email}</span>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-3 font-medium">Naam</th>
+                  <th className="text-left p-3 font-medium">Contact</th>
+                  <th className="text-left p-3 font-medium">Rijbewijs</th>
+                  <th className="text-left p-3 font-medium">Status</th>
+                  <th className="text-left p-3 font-medium">Leerlingen</th>
+                  <th className="text-left p-3 font-medium">Acties</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInstructeurs.map((instructeur) => (
+                  <tr key={instructeur.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3 font-medium">{instructeur.naam}</td>
+                    <td className="p-3">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-1">
+                          <Mail className="h-3 w-3" />
+                          <span className="text-sm">{instructeur.email}</span>
+                        </div>
+                        {instructeur.telefoon && (
+                          <div className="flex items-center space-x-1">
+                            <Phone className="h-3 w-3" />
+                            <span className="text-sm">{instructeur.telefoon}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Phone className="h-3 w-3" />
-                        <span className="text-sm">{instructeur.telefoon}</span>
+                    </td>
+                    <td className="p-3">
+                      <Badge className={getRijbewijsColor(instructeur.rijbewijs_type)}>
+                        {instructeur.rijbewijs_type.join(", ")}
+                      </Badge>
+                    </td>
+                    <td className="p-3">
+                      <Badge className={getStatusColor(instructeur.status)}>{instructeur.status}</Badge>
+                    </td>
+                    <td className="p-3">{instructeur.aantal_studenten || 0}</td>
+                    <td className="p-3">
+                      <div className="flex items-center space-x-2">
+                        <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => deleteInstructeur(instructeur.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getSpecialisatieColor(instructeur.specialisatie)}>
-                      {instructeur.specialisatie}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(instructeur.status)}>{instructeur.status}</Badge>
-                  </TableCell>
-                  <TableCell>{instructeur.leerlingen}</TableCell>
-                  <TableCell>{instructeur.slagingspercentage}%</TableCell>
-                  <TableCell>{instructeur.ervaring}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filteredInstructeurs.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              {searchTerm ? "Geen instructeurs gevonden" : "Nog geen instructeurs toegevoegd"}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

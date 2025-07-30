@@ -1,181 +1,240 @@
 "use client"
 
-import type { ReactNode } from "react"
-import jsPDF from "jspdf"
-import { format } from "date-fns"
-import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
 import type { Invoice } from "@/lib/data"
 
 interface PDFGeneratorProps {
   invoice: Invoice
-  children: ReactNode
+  children?: React.ReactNode
 }
 
 export function PDFGenerator({ invoice, children }: PDFGeneratorProps) {
   const generatePDF = () => {
-    try {
-      const doc = new jsPDF()
-
-      // Rijschool header
-      doc.setFontSize(20)
-      doc.setFont("helvetica", "bold")
-      doc.text("Willes-Rijschool", 20, 30)
-
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "normal")
-      doc.text("Hoofdstraat 123", 20, 40)
-      doc.text("1234 AB Amsterdam", 20, 45)
-      doc.text("Tel: 020-1234567", 20, 50)
-      doc.text("Email: info@willes-rijschool.nl", 20, 55)
-      doc.text("KvK: 12345678", 20, 60)
-      doc.text("BTW: NL123456789B01", 20, 65)
-
-      // Factuur titel
-      doc.setFontSize(16)
-      doc.setFont("helvetica", "bold")
-      doc.text("FACTUUR", 150, 30)
-
-      // Factuur info
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "normal")
-      doc.text(`Factuurnummer: ${invoice.invoiceNumber}`, 150, 40)
-      doc.text(`Datum: ${format(new Date(invoice.date), "dd-MM-yyyy")}`, 150, 45)
-      doc.text(`Vervaldatum: ${format(new Date(invoice.dueDate), "dd-MM-yyyy")}`, 150, 50)
-
-      // Klant info
-      doc.setFontSize(12)
-      doc.setFont("helvetica", "bold")
-      doc.text("Factuuradres:", 20, 85)
-
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "normal")
-      doc.text(invoice.studentName, 20, 95)
-
-      // Adres splitsen op komma's
-      const addressParts = invoice.studentAddress.split(", ")
-      let yPos = 100
-      addressParts.forEach((part) => {
-        doc.text(part, 20, yPos)
-        yPos += 5
-      })
-
-      // Items tabel header
-      const tableStartY = 130
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "bold")
-
-      // Tabel headers
-      doc.text("Beschrijving", 20, tableStartY)
-      doc.text("Datum", 80, tableStartY)
-      doc.text("Tijd", 110, tableStartY)
-      doc.text("Duur", 130, tableStartY)
-      doc.text("Prijs", 150, tableStartY)
-      doc.text("Korting", 170, tableStartY)
-      doc.text("Totaal", 190, tableStartY)
-
-      // Lijn onder header
-      doc.line(20, tableStartY + 2, 200, tableStartY + 2)
-
-      // Items
-      doc.setFont("helvetica", "normal")
-      let currentY = tableStartY + 10
-
-      invoice.items.forEach((item) => {
-        // Beschrijving (kan lang zijn, dus wrappen)
-        const description = item.description
-        if (description.length > 25) {
-          const words = description.split(" ")
-          let line = ""
-          let lineY = currentY
-
-          words.forEach((word) => {
-            if ((line + word).length > 25) {
-              doc.text(line, 20, lineY)
-              line = word + " "
-              lineY += 5
-            } else {
-              line += word + " "
-            }
-          })
-          if (line.trim()) {
-            doc.text(line.trim(), 20, lineY)
+    // Create a simple HTML representation of the invoice
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Factuur ${invoice.invoiceNumber}</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            line-height: 1.6;
           }
-          currentY = lineY
-        } else {
-          doc.text(description, 20, currentY)
-        }
+          .header { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 30px;
+            border-bottom: 2px solid #3B82F6;
+            padding-bottom: 20px;
+          }
+          .company-info { color: #374151; }
+          .company-name { 
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #1F2937;
+            margin-bottom: 10px;
+          }
+          .invoice-info { text-align: right; }
+          .invoice-title { 
+            font-size: 28px; 
+            font-weight: bold; 
+            color: #3B82F6;
+            margin-bottom: 10px;
+          }
+          .details { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 30px;
+          }
+          .customer-info, .invoice-details { width: 45%; }
+          .label { 
+            font-weight: bold; 
+            color: #374151;
+            margin-bottom: 5px;
+          }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 30px;
+          }
+          th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #E5E7EB;
+          }
+          th { 
+            background-color: #F3F4F6; 
+            font-weight: bold;
+            color: #374151;
+          }
+          .totals { 
+            width: 300px; 
+            margin-left: auto;
+            background-color: #F9FAFB;
+            padding: 20px;
+            border-radius: 8px;
+          }
+          .total-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px;
+          }
+          .total-final { 
+            font-weight: bold; 
+            font-size: 18px;
+            border-top: 2px solid #3B82F6;
+            padding-top: 8px;
+            margin-top: 8px;
+          }
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #E5E7EB;
+            text-align: center;
+            color: #6B7280;
+            font-size: 14px;
+          }
+          .notes {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            border-radius: 4px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="company-info">
+            <div class="company-name">Willes-Rijschool</div>
+            <div>Hoofdstraat 123</div>
+            <div>1234 AB Amsterdam</div>
+            <div>Tel: 020-1234567</div>
+            <div>Email: info@willes-rijschool.nl</div>
+            <div>KvK: 12345678</div>
+          </div>
+          <div class="invoice-info">
+            <div class="invoice-title">FACTUUR</div>
+            <div><strong>${invoice.invoiceNumber}</strong></div>
+          </div>
+        </div>
 
-        doc.text(format(new Date(item.date), "dd-MM"), 80, currentY)
-        doc.text(item.time || "-", 110, currentY)
-        doc.text(`${item.duration}m`, 130, currentY)
-        doc.text(`€${item.unitPrice.toFixed(2)}`, 150, currentY)
-        doc.text(item.discount > 0 ? `-€${item.discount.toFixed(2)}` : "-", 170, currentY)
-        doc.text(`€${item.total.toFixed(2)}`, 190, currentY)
+        <div class="details">
+          <div class="customer-info">
+            <div class="label">Factuuradres:</div>
+            <div><strong>${invoice.studentName}</strong></div>
+            <div>${invoice.studentAddress}</div>
+            <div>${invoice.studentEmail}</div>
+          </div>
+          <div class="invoice-details">
+            <div class="label">Factuurgegevens:</div>
+            <div><strong>Factuurdatum:</strong> ${new Date(invoice.date).toLocaleDateString('nl-NL')}</div>
+            <div><strong>Vervaldatum:</strong> ${new Date(invoice.dueDate).toLocaleDateString('nl-NL')}</div>
+            <div><strong>Instructeur:</strong> ${invoice.instructorName}</div>
+          </div>
+        </div>
 
-        currentY += 10
-      })
+        <table>
+          <thead>
+            <tr>
+              <th>Beschrijving</th>
+              <th>Datum</th>
+              <th>Tijd</th>
+              <th>Duur</th>
+              <th>Prijs</th>
+              <th>Korting</th>
+              <th>Totaal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${invoice.items.map(item => `
+              <tr>
+                <td>${item.description}</td>
+                <td>${new Date(item.date).toLocaleDateString('nl-NL')}</td>
+                <td>${item.time || '-'}</td>
+                <td>${item.duration} min</td>
+                <td>€ ${item.unitPrice.toFixed(2)}</td>
+                <td>${item.discount > 0 ? '-€ ' + item.discount.toFixed(2) : '-'}</td>
+                <td>€ ${item.total.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
 
-      // Totalen sectie
-      const totalsStartY = currentY + 10
-      doc.line(20, totalsStartY, 200, totalsStartY)
+        <div class="totals">
+          <div class="total-row">
+            <span>Subtotaal:</span>
+            <span>€ ${invoice.subtotal.toFixed(2)}</span>
+          </div>
+          ${invoice.discount > 0 ? `
+            <div class="total-row">
+              <span>Korting:</span>
+              <span style="color: #DC2626;">-€ ${invoice.discount.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          <div class="total-row">
+            <span>BTW (${invoice.taxRate}%):</span>
+            <span>€ ${invoice.taxAmount.toFixed(2)}</span>
+          </div>
+          <div class="total-row total-final">
+            <span>Totaal:</span>
+            <span>€ ${invoice.total.toFixed(2)}</span>
+          </div>
+        </div>
 
-      let totalsY = totalsStartY + 10
+        ${invoice.notes ? `
+          <div class="notes">
+            <div class="label">Notities:</div>
+            <div>${invoice.notes}</div>
+          </div>
+        ` : ''}
 
-      // Subtotaal
-      doc.text("Subtotaal:", 150, totalsY)
-      doc.text(`€${invoice.subtotal.toFixed(2)}`, 190, totalsY)
-      totalsY += 8
+        <div class="footer">
+          <div>Betaling binnen 30 dagen na factuurdatum.</div>
+          <div>Rekeningnummer: NL12 BANK 0123 4567 89 t.n.v. Willes-Rijschool</div>
+          <div>Vermeld bij betaling: ${invoice.invoiceNumber}</div>
+          <br>
+          <div>Bedankt voor uw vertrouwen in Willes-Rijschool!</div>
+        </div>
+      </body>
+      </html>
+    `
 
-      // Korting (als van toepassing)
-      if (invoice.discount > 0) {
-        doc.text("Korting:", 150, totalsY)
-        doc.text(`-€${invoice.discount.toFixed(2)}`, 190, totalsY)
-        totalsY += 8
+    // Create a new window and print the invoice
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+      
+      // Wait for content to load, then print
+      printWindow.onload = () => {
+        printWindow.print()
+        // Close the window after printing
+        setTimeout(() => {
+          printWindow.close()
+        }, 100)
       }
-
-      // BTW
-      doc.text(`BTW (${invoice.taxRate}%):`, 150, totalsY)
-      doc.text(`€${invoice.taxAmount.toFixed(2)}`, 190, totalsY)
-      totalsY += 8
-
-      // Totaal
-      doc.setFont("helvetica", "bold")
-      doc.text("Totaal:", 150, totalsY)
-      doc.text(`€${invoice.total.toFixed(2)}`, 190, totalsY)
-
-      // Betalingsinformatie
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(9)
-      const paymentY = totalsY + 20
-      doc.text("Betalingsinformatie:", 20, paymentY)
-      doc.text("IBAN: NL12 ABCD 0123 4567 89", 20, paymentY + 8)
-      doc.text("BIC: ABCDNL2A", 20, paymentY + 16)
-      doc.text(`Betalingskenmerk: ${invoice.invoiceNumber}`, 20, paymentY + 24)
-      doc.text(`Gelieve binnen 30 dagen te betalen`, 20, paymentY + 32)
-
-      // Notities (als van toepassing)
-      if (invoice.notes) {
-        doc.text("Notities:", 20, paymentY + 44)
-        doc.text(invoice.notes, 20, paymentY + 52)
-      }
-
-      // Footer
-      doc.setFontSize(8)
-      doc.text("Willes-Rijschool - Uw partner in rijopleidingen", 105, 280, { align: "center" })
-
-      // Download PDF
-      doc.save(`Factuur_${invoice.invoiceNumber}.pdf`)
-
-      toast.success(`PDF van factuur ${invoice.invoiceNumber} gedownload`)
-    } catch (error) {
-      console.error("Error generating PDF:", error)
-      toast.error("Fout bij genereren van PDF")
     }
   }
 
+  if (children) {
+    return (
+      <div onClick={generatePDF} style={{ cursor: 'pointer' }}>
+        {children}
+      </div>
+    )
+  }
+
   return (
-    <div onClick={generatePDF} style={{ cursor: "pointer" }}>
-      {children}
-    </div>
+    <Button onClick={generatePDF} variant="outline">
+      <Download className="h-4 w-4 mr-2" />
+      Download PDF
+    </Button>
   )
 }
