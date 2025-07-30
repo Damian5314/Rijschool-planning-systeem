@@ -3,19 +3,12 @@
 import { useState, useEffect } from "react"
 import { Plus, Search, Filter, Download, Mail, Eye, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2, Download } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
@@ -110,13 +103,19 @@ export default function FacturatiePage() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // Nieuwe factuur state
-  const [newInvoice, setNewInvoice] = useState({
-    studentId: "",
-    instructorId: "",
-    items: [] as InvoiceItem[],
-    notes: "",
-  })
+  // Mock data for students and instructors (replace with actual fetch later)
+  const mockStudents = [
+    { id: "1", name: "Emma van der Berg", email: "emma@example.com", address: "Straat 1, 1234 AB Stad" },
+    { id: "2", name: "Lucas de Vries", email: "lucas@example.com", address: "Weg 2, 5678 CD Dorp" },
+  ]
+  const mockInstructors = [
+    { id: "1", name: "Jan Jansen" },
+    { id: "2", name: "Marie Bakker" },
+  ]
+
+  useEffect(() => {
+    setInvoices(mockInvoices)
+  }, [])
 
   const [newItem, setNewItem] = useState({
     description: "",
@@ -289,8 +288,8 @@ export default function FacturatiePage() {
       return
     }
 
-    const student = mockStudents.find((s) => s.id === newInvoice.studentId)
-    const instructor = mockInstructors.find((i) => i.id === newInvoice.instructorId)
+    const instructorId = formData.get("instructorId") as string
+    const selectedInstructor = mockInstructors.find((i) => i.id === instructorId)
 
     if (!student || !instructor) {
       toast({
@@ -301,30 +300,32 @@ export default function FacturatiePage() {
       return
     }
 
-    const totals = calculateInvoiceTotals(newInvoice.items)
-    const now = new Date()
+    const { subtotal, discount, taxAmount, total } = calculateInvoiceTotals(
+      invoiceItems,
+      Number.parseFloat(formData.get("taxRate") as string),
+    )
 
-    const invoice: Invoice = {
-      id: Date.now().toString(),
-      invoiceNumber: generateInvoiceNumber(),
-      studentId: newInvoice.studentId,
-      studentName: student.name,
-      studentEmail: student.email,
-      studentAddress: student.address,
-      instructorId: newInvoice.instructorId,
-      instructorName: instructor.name,
-      date: format(now, "yyyy-MM-dd"),
-      dueDate: format(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
-      items: newInvoice.items,
-      subtotal: totals.subtotal,
-      discount: totals.discount,
-      taxRate: 21,
-      taxAmount: totals.taxAmount,
-      total: totals.total,
-      status: "concept",
-      notes: newInvoice.notes,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
+    const newInvoice: Invoice = {
+      id: currentInvoice?.id || `inv-${Date.now()}`,
+      invoiceNumber: currentInvoice?.invoiceNumber || generateInvoiceNumber(),
+      studentId: selectedStudent.id,
+      studentName: selectedStudent.name,
+      studentEmail: selectedStudent.email,
+      studentAddress: selectedStudent.address,
+      instructorId: selectedInstructor.id,
+      instructorName: selectedInstructor.name,
+      date: formData.get("date") as string,
+      dueDate: formData.get("dueDate") as string,
+      items: invoiceItems,
+      subtotal,
+      discount,
+      taxRate: Number.parseFloat(formData.get("taxRate") as string),
+      taxAmount,
+      total,
+      status: formData.get("status") as "concept" | "verzonden" | "betaald" | "vervallen",
+      notes: formData.get("notes") as string,
+      createdAt: currentInvoice?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
 
     setInvoices((prev) => [invoice, ...prev])
@@ -813,59 +814,63 @@ export default function FacturatiePage() {
                       </div>
                     </div>
 
-                    <div>
-                      <h3 className="font-semibold mb-2">Leerling</h3>
-                      <div className="space-y-1 text-sm">
-                        <div>{selectedInvoice.studentName}</div>
-                        <div>{selectedInvoice.studentEmail}</div>
-                        <div>{selectedInvoice.studentAddress}</div>
-                      </div>
-                    </div>
-                  </div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <Label htmlFor="taxRate">BTW Tarief (%)</Label>
+                <Input
+                  id="taxRate"
+                  name="taxRate"
+                  type="number"
+                  defaultValue={currentInvoice?.taxRate || 21}
+                  onChange={(e) => {
+                    const newTaxRate = Number.parseFloat(e.target.value)
+                    const { subtotal, discount, taxAmount, total } = calculateInvoiceTotals(invoiceItems, newTaxRate)
+                    setCurrentInvoice((prev) =>
+                      prev ? { ...prev, subtotal, discount, taxAmount, total, taxRate: newTaxRate } : null,
+                    )
+                  }}
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div>
+                <Label>Subtotaal</Label>
+                <Input
+                  value={`€${calculateInvoiceTotals(invoiceItems, currentInvoice?.taxRate || 21).subtotal.toFixed(2)}`}
+                  readOnly
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Korting Totaal</Label>
+                <Input
+                  value={`€${calculateInvoiceTotals(invoiceItems, currentInvoice?.taxRate || 21).discount.toFixed(2)}`}
+                  readOnly
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>BTW Bedrag</Label>
+                <Input
+                  value={`€${calculateInvoiceTotals(invoiceItems, currentInvoice?.taxRate || 21).taxAmount.toFixed(2)}`}
+                  readOnly
+                  className="mt-1"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>Totaalbedrag</Label>
+                <Input
+                  value={`€${calculateInvoiceTotals(invoiceItems, currentInvoice?.taxRate || 21).total.toFixed(2)}`}
+                  readOnly
+                  className="mt-1 font-bold text-lg"
+                />
+              </div>
+            </div>
 
-                  {/* Items */}
-                  <div>
-                    <h3 className="font-semibold mb-4">Items</h3>
-                    <div className="space-y-2">
-                      {selectedInvoice.items.map((item) => (
-                        <div key={item.id} className="flex justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <div className="font-medium">{item.description}</div>
-                            <div className="text-sm text-gray-600">
-                              {format(new Date(item.date), "dd MMM yyyy", { locale: nl })}
-                              {item.time && ` om ${item.time}`} • {item.duration} min • €{item.unitPrice}/uur
-                              {item.discount > 0 && ` • Korting: €${item.discount}`}
-                            </div>
-                          </div>
-                          <div className="font-semibold">€{item.total.toFixed(2)}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Totalen */}
-                  <div className="border-t pt-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Subtotaal:</span>
-                        <span>€{selectedInvoice.subtotal.toFixed(2)}</span>
-                      </div>
-                      {selectedInvoice.discount > 0 && (
-                        <div className="flex justify-between text-red-600">
-                          <span>Korting:</span>
-                          <span>-€{selectedInvoice.discount.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span>BTW ({selectedInvoice.taxRate}%):</span>
-                        <span>€{selectedInvoice.taxAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-lg border-t pt-2">
-                        <span>Totaal:</span>
-                        <span>€{selectedInvoice.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
+            <div className="mt-4">
+              <Label htmlFor="notes">Opmerkingen</Label>
+              <Textarea id="notes" name="notes" defaultValue={currentInvoice?.notes || ""} className="mt-1" rows={3} />
+            </div>
 
                   {/* Notities */}
                   {selectedInvoice.notes && (

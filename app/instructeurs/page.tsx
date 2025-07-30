@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -333,20 +336,9 @@ export default function Instructeurs() {
           </CardContent>
         </Card>
       </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Instructeurs Overzicht</CardTitle>
-          <CardDescription>Beheer alle instructeurs en hun gegevens</CardDescription>
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Zoek instructeurs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
+          <CardTitle>Overzicht Instructeurs</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -414,6 +406,65 @@ export default function Instructeurs() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{currentInstructor ? "Instructeur Bewerken" : "Nieuwe Instructeur Toevoegen"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Naam
+              </Label>
+              <Input id="name" name="name" defaultValue={currentInstructor?.name} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                E-mail
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue={currentInstructor?.email}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Telefoon
+              </Label>
+              <Input id="phone" name="phone" defaultValue={currentInstructor?.phone} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="specialization" className="text-right">
+                Rijbewijs Type
+              </Label>
+              <Select
+                name="specialization"
+                defaultValue={currentInstructor?.specialization[0]} // Assuming single select for simplicity in form
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="B">B (Personenauto)</SelectItem>
+                  <SelectItem value="A">A (Motor)</SelectItem>
+                  <SelectItem value="C">C (Vrachtwagen)</SelectItem>
+                  <SelectItem value="D">D (Bus)</SelectItem>
+                  <SelectItem value="E">E (Aanhangwagen)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="submit">{currentInstructor ? "Opslaan" : "Toevoegen"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

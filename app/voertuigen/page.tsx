@@ -2,32 +2,18 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Plus, Search, Edit, Trash2, Car, Gauge, CalendarIcon, Wrench, AlertTriangle, CheckCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
-import { nl } from "date-fns/locale"
+import { toast } from "@/components/ui/use-toast"
+import type { Vehicle, Instructor } from "@/lib/data" // Assuming Instructor interface is also here
 
-export default function Voertuigen() {
-  const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
+export default function VoertuigenPage() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [instructors, setInstructors] = useState<Instructor[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isOnderhoudDialogOpen, setIsOnderhoudDialogOpen] = useState(false)
   const [isKmDialogOpen, setIsKmDialogOpen] = useState(false)
@@ -486,26 +472,16 @@ export default function Voertuigen() {
 
       <Card className="card-hover glass-effect">
         <CardHeader>
-          <CardTitle>Voertuigen Overzicht</CardTitle>
-          <CardDescription>Beheer alle voertuigen en hun gegevens</CardDescription>
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Zoek voertuigen..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm bg-white/50"
-            />
-          </div>
+          <CardTitle>Overzicht Voertuigen</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Merk</TableHead>
+                <TableHead>Model</TableHead>
                 <TableHead>Kenteken</TableHead>
-                <TableHead>Voertuig</TableHead>
-                <TableHead>Transmissie</TableHead>
-                <TableHead>Kilometerstand</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Brandstof</TableHead>
                 <TableHead>Acties</TableHead>
@@ -585,69 +561,180 @@ export default function Voertuigen() {
         </CardContent>
       </Card>
 
-      {/* Onderhoud Dialog */}
-      <Dialog open={isOnderhoudDialogOpen} onOpenChange={setIsOnderhoudDialogOpen}>
-        <DialogContent>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Onderhoud Plannen</DialogTitle>
-            <DialogDescription>
-              Plan onderhoud voor {selectedVoertuig?.kenteken} - {selectedVoertuig?.merk} {selectedVoertuig?.model}
-            </DialogDescription>
+            <DialogTitle>{currentVehicle ? "Voertuig Bewerken" : "Nieuw Voertuig Toevoegen"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Onderhoud Datum</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {onderhoudDatum ? format(onderhoudDatum, "PPP", { locale: nl }) : "Selecteer datum"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={onderhoudDatum} onSelect={setOnderhoudDatum} initialFocus />
-                </PopoverContent>
-              </Popover>
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="brand" className="text-right">
+                Merk
+              </Label>
+              <Input id="brand" name="brand" defaultValue={currentVehicle?.brand} className="col-span-3" required />
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOnderhoudDialogOpen(false)}>
-              Annuleren
-            </Button>
-            <Button onClick={planOnderhoud} className="bg-gradient-to-r from-blue-500 to-purple-500">
-              Onderhoud Plannen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* KM-stand Dialog */}
-      <Dialog open={isKmDialogOpen} onOpenChange={setIsKmDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Kilometerstand Bijwerken</DialogTitle>
-            <DialogDescription>Werk de kilometerstand bij voor {selectedVoertuig?.kenteken}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="nieuwe-km">Nieuwe Kilometerstand</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="model" className="text-right">
+                Model
+              </Label>
+              <Input id="model" name="model" defaultValue={currentVehicle?.model} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="year" className="text-right">
+                Bouwjaar
+              </Label>
               <Input
-                id="nieuwe-km"
+                id="year"
+                name="year"
                 type="number"
-                placeholder="Voer nieuwe kilometerstand in"
-                value={nieuweKm}
-                onChange={(e) => setNieuweKm(e.target.value)}
+                defaultValue={currentVehicle?.year}
+                className="col-span-3"
+                required
               />
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsKmDialogOpen(false)}>
-              Annuleren
-            </Button>
-            <Button onClick={updateKilometerstand} className="bg-gradient-to-r from-blue-500 to-purple-500">
-              Bijwerken
-            </Button>
-          </DialogFooter>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="licensePlate" className="text-right">
+                Kenteken
+              </Label>
+              <Input
+                id="licensePlate"
+                name="licensePlate"
+                defaultValue={currentVehicle?.licensePlate}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="type" className="text-right">
+                Transmissie
+              </Label>
+              <Select
+                name="type"
+                defaultValue={currentVehicle?.type || "manual"} // Updated default value
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Schakel</SelectItem>
+                  <SelectItem value="automatic">Automaat</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="fuelType" className="text-right">
+                Brandstof
+              </Label>
+              <Select
+                name="fuelType"
+                defaultValue={currentVehicle?.fuelType || "benzine"} // Updated default value
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer brandstof" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="benzine">Benzine</SelectItem>
+                  <SelectItem value="diesel">Diesel</SelectItem>
+                  <SelectItem value="elektrisch">Elektrisch</SelectItem>
+                  <SelectItem value="hybride">Hybride</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="mileage" className="text-right">
+                Kilometerstand
+              </Label>
+              <Input
+                id="mileage"
+                name="mileage"
+                type="number"
+                defaultValue={currentVehicle?.mileage}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="lastMaintenance" className="text-right">
+                Laatste Onderhoud
+              </Label>
+              <Input
+                id="lastMaintenance"
+                name="lastMaintenance"
+                type="date"
+                defaultValue={currentVehicle?.lastMaintenance}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="nextMaintenance" className="text-right">
+                Volgende Onderhoud
+              </Label>
+              <Input
+                id="nextMaintenance"
+                name="nextMaintenance"
+                type="date"
+                defaultValue={currentVehicle?.nextMaintenance}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="keuringDate" className="text-right">
+                APK Datum
+              </Label>
+              <Input
+                id="keuringDate"
+                name="keuringDate"
+                type="date"
+                defaultValue={currentVehicle?.keuringDate}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select
+                name="status"
+                defaultValue={currentVehicle?.status || "beschikbaar"} // Updated default value
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="beschikbaar">Beschikbaar</SelectItem>
+                  <SelectItem value="onderhoud">Onderhoud</SelectItem>
+                  <SelectItem value="defect">Defect</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="instructor" className="text-right">
+                Toegewezen Instructeur
+              </Label>
+              <Select
+                name="instructor"
+                defaultValue={currentVehicle?.instructor || ""} // Updated default value
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer instructeur (optioneel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Geen</SelectItem>
+                  {instructors.map((instructor) => (
+                    <SelectItem key={instructor.id} value={instructor.id}>
+                      {instructor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="submit">{currentVehicle ? "Opslaan" : "Toevoegen"}</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

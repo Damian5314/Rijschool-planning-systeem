@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -203,8 +204,7 @@ export default function Instellingen() {
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="adres">Adres</Label>
               <Input
                 id="adres"
@@ -256,8 +256,7 @@ export default function Instellingen() {
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="website">Website</Label>
               <Input
                 id="website"
@@ -430,6 +429,9 @@ export default function Instellingen() {
         {/* Notificaties */}
         <Card className="card-hover glass-effect">
           <CardHeader>
+            <CardTitle>Notificaties</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
             <div className="flex items-center space-x-2">
               <Bell className="h-5 w-5 text-purple-600" />
               <CardTitle>Notificatie Instellingen</CardTitle>
@@ -444,18 +446,47 @@ export default function Instellingen() {
               </div>
               <Switch
                 checked={settings.emailNotificaties}
-                onCheckedChange={(checked) => setSettings({ ...settings, emailNotificaties: checked })}
+                onCheckedChange={(checked) =>
+                  handleChange({
+                    target: {
+                      name: "emailNotificaties",
+                      value: checked,
+                      type: "checkbox",
+                      checked: checked as boolean,
+                    },
+                  } as React.ChangeEvent<HTMLInputElement>)
+                }
               />
+              <Label htmlFor="emailNotificaties">E-mail Notificaties inschakelen</Label>
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>SMS Notificaties</Label>
-                <p className="text-sm text-muted-foreground">Verstuur SMS herinneringen naar leerlingen</p>
-              </div>
-              <Switch
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="smsNotificaties"
+                name="smsNotificaties"
                 checked={settings.smsNotificaties}
-                onCheckedChange={(checked) => setSettings({ ...settings, smsNotificaties: checked })}
+                onCheckedChange={(checked) =>
+                  handleChange({
+                    target: {
+                      name: "smsNotificaties",
+                      value: checked,
+                      type: "checkbox",
+                      checked: checked as boolean,
+                    },
+                  } as React.ChangeEvent<HTMLInputElement>)
+                }
+              />
+              <Label htmlFor="smsNotificaties">SMS Notificaties inschakelen</Label>
+            </div>
+            <div>
+              <Label htmlFor="herinneringVoorExamen">Herinnering voor examen (uur van tevoren)</Label>
+              <Input
+                id="herinneringVoorExamen"
+                name="herinneringVoorExamen"
+                type="number"
+                value={settings.herinneringVoorExamen}
+                onChange={handleChange}
+                min="0"
+                required
               />
             </div>
 
@@ -504,6 +535,9 @@ export default function Instellingen() {
         {/* Systeem Instellingen  */}
         <Card className="card-hover glass-effect">
           <CardHeader>
+            <CardTitle>Data & Backup</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
             <div className="flex items-center space-x-2">
               <Database className="h-5 w-5 text-indigo-600" />
               <CardTitle>Systeem Instellingen</CardTitle>
@@ -518,8 +552,18 @@ export default function Instellingen() {
               </div>
               <Switch
                 checked={settings.automatischeBackup}
-                onCheckedChange={(checked) => setSettings({ ...settings, automatischeBackup: checked })}
+                onCheckedChange={(checked) =>
+                  handleChange({
+                    target: {
+                      name: "automatischeBackup",
+                      value: checked,
+                      type: "checkbox",
+                      checked: checked as boolean,
+                    },
+                  } as React.ChangeEvent<HTMLInputElement>)
+                }
               />
+              <Label htmlFor="automatischeBackup">Automatische Backup inschakelen</Label>
             </div>
 
             {settings.automatischeBackup && (
@@ -539,6 +583,7 @@ export default function Instellingen() {
               <Label htmlFor="dataRetentie">Data Retentie (dagen)</Label>
               <Input
                 id="dataRetentie"
+                name="dataRetentie"
                 type="number"
                 value={settings.dataRetentie}
                 onChange={(e) => setSettings({ ...settings, dataRetentie: Number.parseInt(e.target.value) })}
@@ -563,7 +608,11 @@ export default function Instellingen() {
             </div>
           </CardContent>
         </Card>
-      </div>
+
+        <Button type="submit" className="w-full md:w-auto">
+          Instellingen Opslaan
+        </Button>
+      </form>
     </div>
   )
 }

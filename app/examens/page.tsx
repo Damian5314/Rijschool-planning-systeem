@@ -2,20 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Edit, Trash2, CalendarIcon } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Search, Edit, Calendar, Award, Clock, User, CheckCircle, XCircle, AlertCircle } from "lucide-react"
@@ -411,67 +402,47 @@ export default function Examens() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Leerling</TableHead>
-                <TableHead>Instructeur</TableHead>
-                <TableHead>Datum & Tijd</TableHead>
-                <TableHead>Transmissie</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Datum</TableHead>
+                <TableHead>Tijd</TableHead>
                 <TableHead>Locatie</TableHead>
                 <TableHead>Status</TableHead>
-                {selectedTab === "afgerond" && <TableHead>Resultaat</TableHead>}
-                <TableHead>Acties</TableHead>
+                <TableHead>Pogingen</TableHead>
+                <TableHead className="text-right">Acties</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredExamens.map((examen) => (
-                <TableRow key={examen.id}>
-                  <TableCell className="font-medium">{examen.leerling}</TableCell>
-                  <TableCell>{examen.instructeur}</TableCell>
+              {exams.map((exam) => (
+                <TableRow key={exam.id}>
+                  <TableCell>{getStudentName(exam.studentId)}</TableCell>
+                  <TableCell>{exam.type === "practical" ? "Praktijk" : "Theorie"}</TableCell>
+                  <TableCell>{format(new Date(exam.date), "dd-MM-yyyy", { locale: nl })}</TableCell>
+                  <TableCell>{exam.time}</TableCell>
+                  <TableCell>{exam.location}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col space-y-1">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-3 w-3" />
-                        <span className="text-sm">{new Date(examen.datum).toLocaleDateString("nl-NL")}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span className="text-sm">{examen.tijd}</span>
-                      </div>
-                    </div>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        exam.status === "scheduled"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                          : exam.status === "passed"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      }`}
+                    >
+                      {exam.status === "scheduled" ? "Gepland" : exam.status === "passed" ? "Geslaagd" : "Gezakt"}
+                    </span>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={examen.transmissie === "Automaat" ? "default" : "secondary"}>
-                      {examen.transmissie}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{examen.locatie}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(examen.status)}
-                      <Badge className={getStatusColor(examen.status)}>{examen.status}</Badge>
-                    </div>
-                  </TableCell>
-                  {selectedTab === "afgerond" && (
-                    <TableCell>
-                      {examen.punten !== undefined && (
-                        <div className="text-sm">
-                          <div className={examen.status === "Geslaagd" ? "text-green-600" : "text-red-600"}>
-                            {examen.punten} foutpunten
-                          </div>
-                        </div>
-                      )}
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {selectedTab === "gepland" && examen.status === "Gepland" && (
-                        <Button variant="ghost" size="sm">
-                          <Award className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                  <TableCell>{exam.attempts}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditExam(exam)} className="mr-2">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Bewerken</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteExam(exam.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Verwijderen</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -479,6 +450,123 @@ export default function Examens() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{currentExam ? "Examen Bewerken" : "Nieuw Examen Toevoegen"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="studentId" className="text-right">
+                Student
+              </Label>
+              <Select name="studentId" defaultValue={currentExam?.studentId} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer student" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mockStudents.map((student) => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="type" className="text-right">
+                Type
+              </Label>
+              <Select name="type" defaultValue={currentExam?.type} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="practical">Praktijk</SelectItem>
+                  <SelectItem value="theory">Theorie</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="date" className="text-right">
+                Datum
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={`col-span-3 justify-start text-left font-normal ${!date && "text-muted-foreground"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP", { locale: nl }) : <span>Kies een datum</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus locale={nl} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="time" className="text-right">
+                Tijd
+              </Label>
+              <Input
+                id="time"
+                name="time"
+                type="time"
+                defaultValue={currentExam?.time}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="location" className="text-right">
+                Locatie
+              </Label>
+              <Input
+                id="location"
+                name="location"
+                defaultValue={currentExam?.location}
+                className="col-span-3"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select name="status" defaultValue={currentExam?.status} required>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecteer status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Gepland</SelectItem>
+                  <SelectItem value="passed">Geslaagd</SelectItem>
+                  <SelectItem value="failed">Gezakt</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="attempts" className="text-right">
+                Pogingen
+              </Label>
+              <Input
+                id="attempts"
+                name="attempts"
+                type="number"
+                defaultValue={currentExam?.attempts || 1}
+                className="col-span-3"
+                min="1"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit">{currentExam ? "Opslaan" : "Toevoegen"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

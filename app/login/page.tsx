@@ -14,9 +14,8 @@ import { useRouter } from "next/navigation"
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 export default function LoginPage() {
-  const { toast } = useToast()
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [loginData, setLoginData] = useState({
@@ -310,51 +309,29 @@ export default function LoginPage() {
                   Instructeur
                 </Button>
               </div>
-
-              <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-200/50">
-                <h4 className="font-medium text-sm mb-2">Test Accounts:</h4>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <div>
-                    <strong>Admin:</strong> admin@rijschool.nl / admin123
-                  </div>
-                  <div>
-                    <strong>Instructeur:</strong> instructeur@rijschool.nl / instructeur123
-                  </div>
-                  <div>
-                    <strong>Demo:</strong> demo@rijschool.nl / demo123
-                  </div>
-                  <div>
-                    <strong>Test:</strong> test@test.nl / test
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center space-y-2">
-                <p className="text-sm text-gray-600">Nog geen account?</p>
-                <Button variant="link" className="text-sm font-medium">
-                  Registreer je rijschool →
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Security Badge */}
-          <div className="mt-6 flex items-center justify-center space-x-2 text-xs text-gray-500">
-            <Shield className="h-4 w-4" />
-            <span>Beveiligd met 256-bit SSL encryptie</span>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Inloggen...
+                </>
+              ) : (
+                "Inloggen"
+              )}
+            </Button>
+          </form>
+          <div className="mt-4 text-center text-sm">
+            Heb je nog geen account?{" "}
+            <Link href="/register" className="underline">
+              Registreren
+            </Link>
           </div>
-        </div>
-      </div>
-
-      {/* Mobile branding */}
-      <div className="lg:hidden fixed top-4 left-4">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-            <Car className="h-4 w-4 text-white" />
+          <div className="mt-2 text-xs text-center text-muted-foreground">
+            Demo: admin@rijschool.nl / admin123
           </div>
-          <span className="font-bold text-gray-900">Rijschool Pro</span>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
