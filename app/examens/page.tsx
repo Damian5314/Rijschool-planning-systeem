@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle, Edit, Trash2, CalendarIcon } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Edit, Calendar, Award, Clock, User, CheckCircle, XCircle, AlertCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Plus, Search, Edit, Trash2, Calendar, Award, Clock, User, CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { toast } from "sonner"
 
 interface Examen {
   id: number
@@ -28,7 +28,6 @@ interface Examen {
 }
 
 export default function Examens() {
-  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedTab, setSelectedTab] = useState<"gepland" | "afgerond">("gepland")
@@ -133,10 +132,8 @@ export default function Examens() {
 
   const handleCreateExamen = () => {
     if (!newExamen.leerling || !newExamen.instructeur || !newExamen.datum || !newExamen.tijd) {
-      toast({
-        title: "Validatiefout",
+      toast.error("Validatiefout", {
         description: "Vul alle verplichte velden in",
-        variant: "destructive",
       })
       return
     }
@@ -160,8 +157,7 @@ export default function Examens() {
     })
     setIsDialogOpen(false)
 
-    toast({
-      title: "Examen ingepland",
+    toast.success("Examen ingepland", {
       description: `Examen voor ${newExamen.leerling} is succesvol ingepland`,
     })
   }
@@ -399,174 +395,48 @@ export default function Examens() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Datum</TableHead>
-                <TableHead>Tijd</TableHead>
-                <TableHead>Locatie</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Pogingen</TableHead>
-                <TableHead className="text-right">Acties</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {exams.map((exam) => (
-                <TableRow key={exam.id}>
-                  <TableCell>{getStudentName(exam.studentId)}</TableCell>
-                  <TableCell>{exam.type === "practical" ? "Praktijk" : "Theorie"}</TableCell>
-                  <TableCell>{format(new Date(exam.date), "dd-MM-yyyy", { locale: nl })}</TableCell>
-                  <TableCell>{exam.time}</TableCell>
-                  <TableCell>{exam.location}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        exam.status === "scheduled"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                          : exam.status === "passed"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                      }`}
-                    >
-                      {exam.status === "scheduled" ? "Gepland" : exam.status === "passed" ? "Geslaagd" : "Gezakt"}
+          <div className="space-y-4">
+            {filteredExamens.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Geen examens gevonden
+              </div>
+            ) : (
+              filteredExamens.map((examen) => (
+                <div key={examen.id} className="flex items-center justify-between p-4 bg-white rounded-lg border shadow-sm">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-shrink-0">
+                      {getStatusIcon(examen.status)}
+                    </div>
+                    <div>
+                      <h3 className="font-medium">{examen.leerling}</h3>
+                      <p className="text-sm text-gray-500">
+                        {examen.datum} om {examen.tijd} - {examen.instructeur}
+                      </p>
+                      <p className="text-xs text-gray-400">{examen.locatie}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(examen.status)}`}>
+                      {examen.status}
                     </span>
-                  </TableCell>
-                  <TableCell>{exam.attempts}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditExam(exam)} className="mr-2">
+                    {examen.punten !== undefined && (
+                      <span className="text-sm text-gray-600">
+                        {examen.punten} punten
+                      </span>
+                    )}
+                    <Button variant="ghost" size="icon">
                       <Edit className="h-4 w-4" />
-                      <span className="sr-only">Bewerken</span>
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteExam(exam.id)}>
+                    <Button variant="ghost" size="icon">
                       <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Verwijderen</span>
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{currentExam ? "Examen Bewerken" : "Nieuw Examen Toevoegen"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="studentId" className="text-right">
-                Student
-              </Label>
-              <Select name="studentId" defaultValue={currentExam?.studentId} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockStudents.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">
-                Type
-              </Label>
-              <Select name="type" defaultValue={currentExam?.type} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="practical">Praktijk</SelectItem>
-                  <SelectItem value="theory">Theorie</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="date" className="text-right">
-                Datum
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={`col-span-3 justify-start text-left font-normal ${!date && "text-muted-foreground"}`}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP", { locale: nl }) : <span>Kies een datum</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={date} onSelect={setDate} initialFocus locale={nl} />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="time" className="text-right">
-                Tijd
-              </Label>
-              <Input
-                id="time"
-                name="time"
-                type="time"
-                defaultValue={currentExam?.time}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="location" className="text-right">
-                Locatie
-              </Label>
-              <Input
-                id="location"
-                name="location"
-                defaultValue={currentExam?.location}
-                className="col-span-3"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Status
-              </Label>
-              <Select name="status" defaultValue={currentExam?.status} required>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecteer status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Gepland</SelectItem>
-                  <SelectItem value="passed">Geslaagd</SelectItem>
-                  <SelectItem value="failed">Gezakt</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="attempts" className="text-right">
-                Pogingen
-              </Label>
-              <Input
-                id="attempts"
-                name="attempts"
-                type="number"
-                defaultValue={currentExam?.attempts || 1}
-                className="col-span-3"
-                min="1"
-                required
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit">{currentExam ? "Opslaan" : "Toevoegen"}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
