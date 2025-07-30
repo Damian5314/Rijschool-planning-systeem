@@ -43,7 +43,7 @@ const verifyToken = (req, res, next) => {
 }
 
 /**
- * Middleware om te controleren of gebruiker admin rechten heeft
+ * Middleware om te controleren of gebruiker eigenaar rechten heeft
  * Moet ALTIJD na verifyToken gebruikt worden
  */
 const isAdmin = async (req, res, next) => {
@@ -70,8 +70,8 @@ const isAdmin = async (req, res, next) => {
       })
     }
     
-    // Controleer admin rol
-    if (user.rol === "admin") {
+    // Controleer eigenaar rol
+    if (user.rol === "eigenaar") {
       req.user = user // Sla volledige user object op voor gebruik in controllers
       next()
     } else {
@@ -182,7 +182,7 @@ const isInstructeur = async (req, res, next) => {
 }
 
 /**
- * Middleware om te controleren of gebruiker admin OF instructeur is
+ * Middleware om te controleren of gebruiker eigenaar OF instructeur is
  * Handig voor routes die beide rollen toegang moeten geven
  */
 const isAdminOrInstructeur = async (req, res, next) => {
@@ -206,7 +206,7 @@ const isAdminOrInstructeur = async (req, res, next) => {
       })
     }
     
-    if (user.rol === "admin" || user.rol === "instructeur") {
+    if (user.rol === "eigenaar" || user.rol === "instructeur") {
       req.user = user
       next()
     } else {
@@ -226,7 +226,7 @@ const isAdminOrInstructeur = async (req, res, next) => {
 }
 
 /**
- * Middleware om te controleren of gebruiker zichzelf of admin is
+ * Middleware om te controleren of gebruiker zichzelf of eigenaar is
  * Voor routes waar users hun eigen data kunnen bewerken
  */
 const isSelfOrAdmin = async (req, res, next) => {
@@ -254,7 +254,7 @@ const isSelfOrAdmin = async (req, res, next) => {
     }
     
     // Admin heeft altijd toegang, of gebruiker bewerkt eigen gegevens
-    if (user.rol === "admin" || currentUserId.toString() === targetUserId.toString()) {
+    if (user.rol === "eigenaar" || currentUserId.toString() === targetUserId.toString()) {
       req.user = user
       next()
     } else {
