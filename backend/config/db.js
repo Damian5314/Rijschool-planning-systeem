@@ -64,7 +64,7 @@ async function createTables(client) {
       naam VARCHAR(255) NOT NULL,
       email VARCHAR(255) UNIQUE NOT NULL,
       wachtwoord VARCHAR(255) NOT NULL,
-      rol VARCHAR(50) DEFAULT 'gebruiker' CHECK (rol IN ('gebruiker', 'admin', 'instructeur')),
+      rol VARCHAR(50) DEFAULT 'gebruiker' CHECK (rol IN ('gebruiker', 'eigenaar', 'instructeur')),
       actief BOOLEAN DEFAULT true,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -197,9 +197,9 @@ async function createTables(client) {
     CREATE TRIGGER update_vehicles_updated_at BEFORE UPDATE ON vehicles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     CREATE TRIGGER update_lessons_updated_at BEFORE UPDATE ON lessons FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-    -- Insert test admin user (wachtwoord: admin123)
+    -- Insert test eigenaar user (wachtwoord: eigenaar123)
     INSERT INTO users (naam, email, wachtwoord, rol) VALUES 
-    ('Admin User', 'admin@rijschool.nl', '$2a$10$N9qo8uLOickgx2ZMRZoMye7pFWQxKKVXnzL5OA0PiLV0AJD/bJeMu', 'admin')
+    ('Eigenaar', 'eigenaar@rijschool.nl', '$2a$10$N9qo8uLOickgx2ZMRZoMye7pFWQxKKVXnzL5OA0PiLV0AJD/bJeMu', 'eigenaar')
     ON CONFLICT (email) DO NOTHING;
   `
   
