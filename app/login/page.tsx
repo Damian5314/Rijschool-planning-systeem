@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { Car, Eye, EyeOff, Lock, Mail, Shield, Users, Award, Loader2 } from "lucide-react"
+import { Car, Eye, EyeOff, Lock, Mail, Shield, Users, Award, Loader2, CheckCircle, Calendar, BarChart3 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
@@ -68,138 +68,154 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
+    <div className="min-h-screen bg-gray-300 flex items-center justify-center p-4">
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center">
         {/* Linker kant - Branding & Features */}
         <div className="hidden lg:block space-y-8">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <Car className="h-6 w-6 text-white" />
+          <div className="space-y-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg">
+                <Car className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Rijschool Plansysteem Pro
+                <h1 className="text-3xl font-bold text-slate-800">
+                  Rijschool <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">PlanSysteem</span>
                 </h1>
-                <p className="text-gray-600">Het complete beheersysteem voor rijscholen</p>
+                <p className="text-slate-600 font-medium">Professioneel beheersysteem voor rijscholen</p>
               </div>
             </div>
           </div>
 
           <div className="space-y-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="flex items-start space-x-4 p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/20 shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Users className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Leerling Management</h3>
-                <p className="text-gray-600 text-sm">
-                  Beheer al je leerlingen, hun voortgang en contracten op één centrale plek
+                <h3 className="font-semibold text-slate-800 mb-1">Leerling Management</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Beheer al je leerlingen, hun voortgang en contracten in één overzichtelijk systeem
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="flex items-start space-x-4 p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/20 shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Car className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Voertuig Beheer</h3>
-                <p className="text-gray-600 text-sm">
-                  Houd je wagenpark bij, plan onderhoud en monitor kilometerstanden
+                <h3 className="font-semibold text-slate-800 mb-1">Voertuig & Planning</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Optimaal wagenpark management met slimme planning en onderhoudstracking
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="flex items-start space-x-4 p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/20 shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-11 h-11 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Award className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Examen Planning</h3>
-                <p className="text-gray-600 text-sm">
-                  Plan examens, volg resultaten en behoud overzicht van slagingspercentages
+                <h3 className="font-semibold text-slate-800 mb-1">Examen Administratie</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Volledige examenplanning met automatische resultatenanalyse en rapportage
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Shield className="h-5 w-5 text-white" />
+            <div className="flex items-start space-x-4 p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/20 shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <BarChart3 className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Veilig & Betrouwbaar</h3>
-                <p className="text-gray-600 text-sm">
-                  Je gegevens zijn veilig opgeslagen met automatische backups en encryptie
+                <h3 className="font-semibold text-slate-800 mb-1">Inzichten & Rapportage</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Uitgebreide analyses van prestaties, financiën en bedrijfsvoering
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl border border-blue-200/50">
-            <div className="flex items-center space-x-3 mb-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-bold">✓</span>
+          <div className="p-6 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 rounded-2xl border border-blue-200/30 backdrop-blur-sm">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-5 w-5 text-white" />
               </div>
-              <span className="font-semibold text-gray-900">Vertrouwd door 500+ rijscholen</span>
+              <div>
+                <span className="font-semibold text-slate-800 text-lg">Betrouwbaar systeem</span>
+                <div className="flex items-center space-x-1 mt-1">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className="text-yellow-400 text-sm">★</span>
+                  ))}
+                  <span className="text-slate-600 text-sm ml-2">(4.9/5)</span>
+                </div>
+              </div>
             </div>
-            <p className="text-gray-600 text-sm">
-              "Sinds we Rijschool Plansysteem Pro gebruiken, hebben we 40% meer tijd voor onze leerlingen en is onze
-              administratie volledig geautomatiseerd."
-            </p>
-            <p className="text-gray-500 text-xs mt-2">- Jan Bakker, Rijschool De Veilige Weg</p>
+            <blockquote className="text-slate-700 text-sm leading-relaxed italic">
+              "Sinds we PlanSysteem gebruiken, hebben we 45% meer tijd voor onze leerlingen. 
+              De administratie loopt volledig automatisch en onze slagingspercentages zijn merkbaar gestegen."
+            </blockquote>
+            <footer className="text-slate-500 text-xs mt-3 font-medium">
+              — Petra van Dijk, Rijschool Veilig & Snel (Amsterdam)
+            </footer>
           </div>
         </div>
 
         {/* Rechter kant - Login Form */}
         <div className="w-full max-w-md mx-auto lg:mx-0">
-          <Card className="glass-effect border-0 shadow-2xl">
-            <CardHeader className="space-y-1 text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Card className="bg-white/80 backdrop-blur-xl border-0 shadow-2xl shadow-blue-900/10">
+            <CardHeader className="space-y-2 text-center pb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Lock className="h-8 w-8 text-white" />
               </div>
-              <CardTitle className="text-2xl font-bold">Welkom terug</CardTitle>
-              <CardDescription>Log in op je rijschool account om verder te gaan</CardDescription>
+              <CardTitle className="text-2xl font-bold text-slate-800">Welkom terug</CardTitle>
+              <CardDescription className="text-slate-600">
+                Log in om verder te gaan met je rijschool management
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email adres</Label>
+                  <Label htmlFor="email" className="text-slate-700 font-medium">
+                    Email adres
+                  </Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                     <Input
                       id="email"
                       type="email"
                       placeholder="naam@rijschool.nl"
                       value={loginData.email}
                       onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      className="pl-10 bg-white/50"
+                      className="pl-10 bg-white/70 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 h-12"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Wachtwoord</Label>
+                  <Label htmlFor="password" className="text-slate-700 font-medium">
+                    Wachtwoord
+                  </Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
+                      placeholder="••••••••••"
                       value={loginData.wachtwoord}
                       onChange={(e) => setLoginData({ ...loginData, wachtwoord: e.target.value })}
-                      className="pl-10 pr-10 bg-white/50"
+                      className="pl-10 pr-12 bg-white/70 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 h-12"
                       required
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      className="absolute right-1 top-1 h-10 w-10 hover:bg-slate-100 rounded-lg"
                       onClick={() => setShowPassword(!showPassword)}
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? <EyeOff className="h-4 w-4 text-slate-500" /> : <Eye className="h-4 w-4 text-slate-500" />}
                     </Button>
                   </div>
                 </div>
@@ -210,31 +226,39 @@ export default function LoginPage() {
                       id="remember"
                       checked={rememberMe}
                       onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                      className="border-slate-300"
                     />
-                    <Label htmlFor="remember" className="text-sm">
+                    <Label htmlFor="remember" className="text-sm text-slate-600">
                       Onthoud mij
                     </Label>
                   </div>
-                  <Button variant="link" className="px-0 text-sm">
+                  <Button variant="link" className="px-0 text-sm text-blue-600 hover:text-blue-700">
                     Wachtwoord vergeten?
                   </Button>
                 </div>
 
                 <Button
-                  onClick={handleLogin}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium h-12 shadow-lg shadow-blue-600/25 transition-all duration-200 hover:shadow-xl hover:shadow-blue-600/30"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Bezig met inloggen..." : "Inloggen"}
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Bezig met inloggen...</span>
+                    </div>
+                  ) : (
+                    "Inloggen"
+                  )}
                 </Button>
-              </div>
+              </form>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
+                  <Separator className="w-full bg-slate-200" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-muted-foreground">Of probeer demo</span>
+                  <span className="bg-white px-3 text-slate-500 font-medium">Of probeer demo</span>
                 </div>
               </div>
 
@@ -243,30 +267,35 @@ export default function LoginPage() {
                   variant="outline"
                   onClick={() => handleDemoLogin("eigenaar@rijschool.nl", "eigenaar123", "Eigenaar")}
                   disabled={isLoading}
-                  className="bg-white/50"
+                  className="bg-white/70 border-slate-200 hover:bg-slate-50 h-11 font-medium"
                 >
-                  <Users className="h-4 w-4 mr-2" />
-                  Eigenaar
+                  <Users className="h-4 w-4 mr-2 text-slate-600" />
+                  <span className="text-slate-700">Eigenaar</span>
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => handleDemoLogin("instructeur@rijschool.nl", "instructeur123", "Instructeur")}
                   disabled={isLoading}
-                  className="bg-white/50"
+                  className="bg-white/70 border-slate-200 hover:bg-slate-50 h-11 font-medium"
                 >
-                  <Car className="h-4 w-4 mr-2" />
-                  Instructeur
+                  <Car className="h-4 w-4 mr-2 text-slate-600" />
+                  <span className="text-slate-700">Instructeur</span>
                 </Button>
               </div>
 
-              <div className="mt-4 text-center text-sm">
-                Heb je nog geen account?{" "}
-                <Link href="/register" className="underline">
-                  Registreren
-                </Link>
-              </div>
-              <div className="mt-2 text-xs text-center text-muted-foreground">
-                Demo: eigenaar@rijschool.nl / eigenaar123
+              <div className="space-y-3 pt-2">
+                <div className="text-center text-sm text-slate-600">
+                  Nog geen account?{" "}
+                  <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium underline decoration-2 underline-offset-2">
+                    Account aanmaken
+                  </Link>
+                </div>
+                <div className="text-center">
+                  <div className="inline-block px-3 py-1.5 bg-slate-100 rounded-lg">
+                    <div className="text-xs text-slate-500 font-medium">Demo toegang:</div>
+                    <div className="text-xs text-slate-600 font-mono">eigenaar@rijschool.nl / eigenaar123</div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
